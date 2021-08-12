@@ -206,7 +206,7 @@ namespace Generics {
 
 		//have to declare move constructor explicitly because ¯\_(ツ)_/¯
 		DynArrayList() = default;
-		DynArrayList(DynArray&& buff) : buffer(buff), count(0)
+		DynArrayList(DynArray<T>&& buff) : buffer(buff), count(0)
 		DynArrayList(DynArrayList&& other) : buffer(other.buffer) {
 			count = other.count;
 			other.clear();

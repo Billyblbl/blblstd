@@ -3,10 +3,11 @@
 
 #include <string.h>
 #include <Array.cpp>
+#include <DynArray.cpp>
 
 using StringView = Generics::Array<const u8>;
 
-inline StringView	StringViewFrom(rcstring cstr, USize size) {
+inline StringView	StringViewFrom(const rcstring cstr, USize size) {
 	using namespace Generics;
 	return arrayCast<const u8>(arrayFrom(cstr, size));
 }
@@ -67,5 +68,27 @@ inline auto	writeToBuffer(StringView string, String buffer) {
 	strncpy((cstring)buffer.data, (rcstring)string.data, writeSize);
 	return String{ buffer.data, writeSize } ;
 }
+
+struct LinearStringBuilder : public Generics::ArrayList<u8> {
+
+	inline void	addString(StringView string) {
+		count += writeToBuffer(string, buffer.subArray(count, buffer.count)).count;
+	}
+
+};
+
+struct DynLinearStringBuilder : public Generics::DynArrayList<u8> {
+
+	inline void	addString(StringView string) {
+		buffer.growTo(count + string.count);
+		count += writeToBuffer(string, buffer.subArray(count, buffer.count)).count;
+	}
+
+	inline String	result(bool finished = false) {
+		if (finished) return drop();
+		else return *this;
+	}
+
+};
 
 #endif
