@@ -56,7 +56,7 @@ template<>
 StringView	ToStringView<u64>(const u64& data, Memory::Allocator& allocator) {
 	auto maxSize = 20; //18 446 744 073 709 551 615
 	auto buff = allocator.alloc(maxSize);
-	buff.count = snprintf((cstring)buff.data, buff.count, "%lu", data);
+	buff.count = snprintf((cstring)buff.data, buff.count, "%llu", data);
 	return Generics::arrayCast<const u8>(buff);
 }
 
@@ -88,7 +88,7 @@ template<>
 StringView	ToStringView<s64>(const s64& data, Memory::Allocator& allocator) {
 	auto maxSize = 19; //9 223 372 036 854 775 807
 	auto buff = allocator.alloc(maxSize);
-	buff.count = snprintf((cstring)buff.data, buff.count, "%ld", data);
+	buff.count = snprintf((cstring)buff.data, buff.count, "%lld", data);
 	return Generics::arrayCast<const u8>(buff);
 }
 
@@ -98,20 +98,20 @@ String	Format(StringView format, Memory::Allocator& allocator, Types&&... elemen
 	USize		partsTotalLength = 0;
 	auto scope = Memory::Scope(allocator);
 
-	auto i = 0;
-	(..., {
+	u64 i = 0;
+	(..., [&](){
 		parts[i] = ToStringView(elements, scope);
 		partsTotalLength += parts[i++].count;
-	});
+	}());
 
-	auto	lastWriteFromFormatString = 0;
+	u64	lastWriteFromFormatString = 0;
 	LinearStringBuilder	builder = { Memory::AllocArray<u8>(allocator, format.count - sizeof...(elements) + partsTotalLength), 0 };
 	for (u64 i = 0; i < format.count; i++) if (format[i] == '%') {
-		addString(builder, format.subArray(lastWriteFromFormatString, i));
+		builder.addString(format.subArray(lastWriteFromFormatString, i));
 		lastWriteFromFormatString = i+1;
-		addString(builder, parts[i]);
+		builder.addString(parts[i]);
 	}
-	addString(builder, format.subArray(lastWriteFromFormatString, format.count));
+	builder.addString(format.subArray(lastWriteFromFormatString, format.count));
 	return builder;
 }
 

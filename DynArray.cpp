@@ -11,7 +11,7 @@ namespace Generics {
 	struct DynArray : public Array<T> {
 		Memory::Allocator*	allocator = &Memory::StandardCAllocator;
 
-		void	growTo(u32 targetCount) {
+		void	growTo(u64 targetCount) {
 			if (this->count >= targetCount) return;
 			auto newBuff = allocator->realloc(
 				targetCount * sizeof(T),
@@ -23,13 +23,13 @@ namespace Generics {
 				this->count = newSelf.count;
 			} else {
 				fprintf(stderr, "failed to grow buffer %p for DynArray %p\n", this->data, this);
-				fprintf(stderr, "current size %lu\n", this->count * sizeof(T));
-				fprintf(stderr, "desired size %lu\n", targetCount * sizeof(T));
+				fprintf(stderr, "current size %llu\n", this->count * sizeof(T));
+				fprintf(stderr, "desired size %llu\n", targetCount * sizeof(T));
 				abort();
 			}
 		}
 
-		void	shrinkTo(u32 targetCount) {
+		void	shrinkTo(u64 targetCount) {
 			if (this->count <= targetCount) return;
 			auto newBuff = allocator->realloc(
 				targetCount * sizeof(T),
@@ -63,8 +63,8 @@ namespace Generics {
 		}
 
 		DynArray	&operator=(DynArray&& rhs) {
-			data = rhs.data;
-			count = rhs.count;
+			this->data = rhs.data;
+			this->count = rhs.count;
 			rhs.drop();
 		}
 
@@ -75,7 +75,7 @@ namespace Generics {
 
 	};
 
-	template<typename T, u32 minCapacity = 1>
+	template<typename T, u64 minCapacity = 1>
 	struct DynArrayList {
 		DynArray<T>	buffer;
 		USize		count = 0;
@@ -136,7 +136,7 @@ namespace Generics {
 			count -= range.size();
 		}
 
-		void	removeRange(u32 start, u32 finish) {
+		void	removeRange(u64 start, u64 finish) {
 			removeRange(IndexRange{start, finish});
 		}
 
@@ -149,11 +149,11 @@ namespace Generics {
 			return buffer.find(element);
 		}
 
-		auto&		operator[](u32 index) {
+		auto&		operator[](u64 index) {
 			return buffer[index];
 		}
 
-		const auto&	operator[](u32 index) const {
+		const auto&	operator[](u64 index) const {
 			return buffer[index];
 		}
 
@@ -170,7 +170,7 @@ namespace Generics {
 			return buffer.count;
 		}
 
-		auto		subArray(u32 start, u32 end) {
+		auto		subArray(u64 start, u64 end) {
 			return Array<T> {
 				&buffer[start],
 				end - start
@@ -206,7 +206,7 @@ namespace Generics {
 
 		//have to declare move constructor explicitly because ¯\_(ツ)_/¯
 		DynArrayList() = default;
-		DynArrayList(DynArray<T>&& buff) : buffer(buff), count(0)
+		DynArrayList(DynArray<T>&& buff) : buffer(buff), count(0) {}
 		DynArrayList(DynArrayList&& other) : buffer(other.buffer) {
 			count = other.count;
 			other.clear();

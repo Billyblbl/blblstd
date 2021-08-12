@@ -53,19 +53,19 @@ template<USize size>
 inline auto	writeToBuffer(StringView string, u8 (&buffer)[size]) {
 	auto writeSize = (string.count < size - 1) ? string.count : size - 1;
 	strncpy(buffer, string.data, writeSize);
-	return String
+	return String;
 }
 
 template<USize size>
 inline auto	writeToBuffer(StringView string, char (&buffer)[size]) {
 	auto writeSize = (string.count < size - 1) ? string.count : size - 1;
-	strncpy(buffer, string.data, writeSize);
+	strncpy_s(buffer, size, string.data, writeSize);
 	return StringFrom(buffer, writeSize);
 }
 
 inline auto	writeToBuffer(StringView string, String buffer) {
 	auto writeSize = (string.count < buffer.count) ? string.count : buffer.count;
-	strncpy((cstring)buffer.data, (rcstring)string.data, writeSize);
+	strncpy_s((cstring)buffer.data, buffer.count, (rcstring)string.data, writeSize);
 	return String{ buffer.data, writeSize } ;
 }
 

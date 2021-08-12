@@ -7,6 +7,10 @@
 
 namespace Memory {
 
+	struct Scope;
+	Allocator	MakeScopeAllocator(Scope& scope);
+
+
 	struct Scope : public Generics::DynArrayList<Buffer> {
 
 		inline Buffer	alloc(USize size) {
@@ -40,7 +44,7 @@ namespace Memory {
 		inline operator Allocator&() {
 			auto buff = alloc(sizeof(Allocator));
 			auto &alloc = Generics::arrayCast<Allocator>(buff)[0];
-			alloc = *this;
+			alloc = MakeScopeAllocator(*this);
 			return alloc;
 		}
 

@@ -64,27 +64,27 @@ namespace Generics {
 		const auto *begin() const { return data; }
 		const auto *end() const { return data + count; }
 
-		auto&		operator[](u32 index) {
+		auto&		operator[](u64 index) {
 			return data[index];
 		}
 
-		const auto&	operator[](u32 index) const {
+		const auto&	operator[](u64 index) const {
 			return data[index];
 		}
 
 		T*			find(T &element) {
-			for (auto &it : this)
+			for (auto &it : *this)
 				if (it == element) return &it;
 			return null;
 		}
 
 		const T*	find(T &element) const {
-			for (auto &it : this)
+			for (auto &it : *this)
 				if (it == element) return &it;
 			return null;
 		}
 
-		auto		subArray(u32 start, u32 end) {
+		auto		subArray(u64 start, u64 end) {
 			return Array<T> {
 				&data[start],
 				end - start
@@ -95,7 +95,7 @@ namespace Generics {
 			return subArray(indexes.start, indexes.finish);
 		}
 
-		const auto		subArray(u32 start, u32 end) const {
+		const auto		subArray(u64 start, u64 end) const {
 			return Array<T> {
 				&data[start],
 				end - start
@@ -186,11 +186,11 @@ namespace Generics {
 			return buffer.find(element);
 		}
 
-		auto&		operator[](u32 index) {
+		auto&		operator[](u64 index) {
 			return buffer[index];
 		}
 
-		const auto&	operator[](u32 index) const {
+		const auto&	operator[](u64 index) const {
 			return buffer[index];
 		}
 
@@ -207,7 +207,7 @@ namespace Generics {
 			return buffer.count;
 		}
 
-		auto		subArray(u32 start, u32 end) {
+		auto		subArray(u64 start, u64 end) {
 			return Array<T> {
 				&buffer[start],
 				end - start
