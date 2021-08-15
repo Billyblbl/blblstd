@@ -121,7 +121,7 @@ namespace Generics {
 
 		//@Note element must be part of the collection, should it be checked in here?
 		void		removeNonOrdered(T *element) {
-			*element.~T();
+			element->~T();
 			count--;
 			*element = buffer[count];
 		}

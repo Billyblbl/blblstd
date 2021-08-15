@@ -20,11 +20,18 @@ namespace Memory {
 		inline Buffer	realloc(USize size, Buffer buff) {
 			auto location = find(buff);
 			if (location) return *location = buffer.allocator->realloc(size, buff);
+			else if (buff.count == 0) return alloc(size);
 			else return Buffer{};
 		}
 
 		inline void	dealloc(Buffer buff) {
-			return buffer.allocator->dealloc(buff);
+			auto location = find(buff);
+			if (location) {
+				buffer.allocator->dealloc(*location);
+				removeNonOrdered(location);
+			} else {
+				fprintf(stderr, "Attempted dealloc in Scope %p, which doesn't contain buffer (%p)", this, buff.data);
+			}
 		}
 
 		Scope(Allocator& alloc = StandardCAllocator) {

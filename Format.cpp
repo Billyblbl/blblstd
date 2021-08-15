@@ -105,11 +105,12 @@ String	Format(StringView format, Memory::Allocator& allocator, Types&&... elemen
 	}());
 
 	u64	lastWriteFromFormatString = 0;
+	u64 partWrites = 0;
 	LinearStringBuilder	builder = { Memory::AllocArray<u8>(allocator, format.count - sizeof...(elements) + partsTotalLength), 0 };
 	for (u64 i = 0; i < format.count; i++) if (format[i] == '%') {
 		builder.addString(format.subArray(lastWriteFromFormatString, i));
 		lastWriteFromFormatString = i+1;
-		builder.addString(parts[i]);
+		builder.addString(parts[partWrites++]);
 	}
 	builder.addString(format.subArray(lastWriteFromFormatString, format.count));
 	return builder;
