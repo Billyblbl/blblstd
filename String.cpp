@@ -48,6 +48,8 @@ inline bool	operator==(StringView lhs, StringView rhs) {
 inline bool	operator==(const String lhs, const String rhs) { return viewOf(lhs) == viewOf(rhs); }
 inline bool	operator==(const String lhs, StringView rhs) { return viewOf(lhs) == rhs; }
 inline bool	operator==(StringView lhs, const String rhs) { return lhs == viewOf(rhs); }
+inline bool	operator==(StringView lhs, rcstring rhs) { return lhs == StringViewFrom(rhs, strlen(rhs)); }
+inline bool	operator==(rcstring lhs, StringView rhs) { return StringViewFrom(lhs, strlen(lhs)) == rhs; }
 
 template<USize size>
 inline auto	writeToBuffer(StringView string, u8 (&buffer)[size]) {
