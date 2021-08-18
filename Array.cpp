@@ -58,6 +58,9 @@ namespace Generics {
 		T*		data = null;
 		USize	count = 0;
 
+		operator Array<const T>() const {
+			return arrayCast<const T>(*this);
+		}
 
 		auto *begin() { return data; }
 		auto *end() { return data + count; }
