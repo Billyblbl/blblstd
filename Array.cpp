@@ -1,7 +1,9 @@
 #ifndef G_ARRAY
 # define G_ARRAY
 
+#include <malloc.h>
 #include <utility>
+
 #include <BaseTypes.cpp>
 
 namespace Generics {
@@ -250,6 +252,8 @@ namespace Generics {
 	auto	arrayCount(T (&)[arraySize]) { return arraySize; }
 
 } // namespace Generics
+
+#define MakeStackArray(type, count) (Generics::arrayFrom((type*)_alloca(sizeof(type) * count), count))
 
 
 #endif
