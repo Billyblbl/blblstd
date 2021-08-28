@@ -70,6 +70,7 @@ namespace Generics {
 		}
 
 		DynArray	&operator=(DynArray&& rhs) {
+			release();
 			this->data = rhs.data;
 			this->count = rhs.count;
 			this->allocator = rhs.allocator;
