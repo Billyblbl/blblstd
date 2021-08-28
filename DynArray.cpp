@@ -59,15 +59,23 @@ namespace Generics {
 		DynArray(DynArray &&other) {
 			this->data = other.data;
 			this->count = other.count;
+			this->allocator = other.allocator;
 			other.drop();
+		}
+
+		DynArray(Array<T> array, Memory::Allocator& allocator) {
+			this->data = array.data;
+			this->count = array.count;
+			this->allocator = &allocator;
 		}
 
 		DynArray	&operator=(DynArray&& rhs) {
 			this->data = rhs.data;
 			this->count = rhs.count;
+			this->allocator = rhs.allocator;
 			rhs.drop();
+			return *this;
 		}
-
 
 		~DynArray() {
 			release();
@@ -105,6 +113,11 @@ namespace Generics {
 				targetCap /= 2;
 			if (count > targetCap) return;
 			buffer.shrinkTo(targetCap);
+		}
+
+		void	shrinkPerfectFit() {
+			if (count == 0 || capacity() == count) return;
+			buffer.shrinkTo(count);
 		}
 
 		void	grow() {
@@ -206,7 +219,7 @@ namespace Generics {
 
 		//have to declare move constructor explicitly because ¯\_(ツ)_/¯
 		DynArrayList() = default;
-		DynArrayList(DynArray<T>&& buff) : buffer(buff), count(0) {}
+		DynArrayList(DynArray<T>&& buff) : buffer(std::forward<DynArray<T>>(buff)), count(0) {}
 		DynArrayList(DynArrayList&& other) : buffer(other.buffer) {
 			count = other.count;
 			other.clear();
@@ -224,6 +237,8 @@ namespace Generics {
 
 	};
 
+	template<typename T>
+	DynArrayList<T>	dynListFrom(DynArray<T> &&array) { return array; }
 
 } // namespace Generics
 
