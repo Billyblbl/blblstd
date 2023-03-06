@@ -1,103 +1,42 @@
 #ifndef G_MEMORY
 # define G_MEMORY
 
-#include <BaseTypes.cpp>
-#include <Array.cpp>
+#include <utils.cpp>
 #include <stdlib.h>
 
-namespace Memory {
+using Buffer = Array<byte>;
 
-	struct Buffer : public Generics::Array<Byte> {
-		operator bool() const { return (data && count > 0); }
+struct Alloc {
+	any* context;
+	Buffer(*strategy)(any*, Buffer, usize);
+	inline Buffer alloc(usize size) { return strategy(context, {}, size); }
+	inline Buffer realloc(Buffer buffer, usize size) { return strategy(context, buffer, size); }
+	inline void dealloc(Buffer buffer) { strategy(context, buffer, 0); }
+};
 
-		template<typename T>
-		static auto	fromArray(Generics::Array<T> array) {
-			auto asByteArray = Generics::arrayCast<Byte>(array);
-			return Buffer{
-				asByteArray.data,
-				asByteArray.count
-			};
-		}
+template<typename T> inline Array<T> alloc_array(Alloc allocator, usize count) {
+	return cast<T>(allocator.alloc(sizeof(T) * count));
+}
 
-		template<typename T>
-		static auto fromObj(T &obj) {
-			return fromArray(Generics::arrayFrom(&obj, &obj ? 1 : 0));
-		}
-	};
+template<typename T> inline Array<T> realloc_array(Alloc allocator, Array<T> arr, usize count) {
+	return cast<T>(allocator.realloc(cast<byte>(arr), sizeof(T) * count));
+}
 
-	struct AllocationStrategy {
-		Buffer	(*alloc)(Any* memoryContext, USize size) = null;
-		Buffer	(*realloc)(Any* memoryContext, USize size, Buffer buffer) = null;
-		void	(*dealloc)(Any* memoryContext, Buffer buffer) = null;
-		void	(*clear)(Any* memoryContext) = null;
-	};
+template<typename T> inline void dealloc_array(Alloc allocator, Array<T> arr) {
+	return allocator.dealloc(cast<byte>(arr));
+}
 
-	struct Allocator {
-		Any*				context;
-		AllocationStrategy	strategy;
+template<typename T> inline Array<T> duplicate_array(Alloc allocator, Array<T> arr) {
+	auto other = alloc_array<T>(allocator, arr.size());
+	memcpy(other.data(), arr.data(), arr.size());
+	return other;
+}
 
-		inline Buffer	alloc(USize size) {
-			if (strategy.alloc) return strategy.alloc(context, size);
-			else return Buffer{};
-		}
+Buffer std_alloc_strategy(any*, Buffer buffer, usize size) {
+	auto ptr = realloc(buffer.data(), size);
+	return Buffer((byte*)ptr, ptr != null ? size : 0);
+}
 
-		inline Buffer	realloc(USize size, Buffer buffer) {
-			if (strategy.realloc) return strategy.realloc(context, size, buffer);
-			else return Buffer{};
-		}
-
-		inline void	dealloc(Buffer buffer) {
-			if (strategy.dealloc) strategy.dealloc(context, buffer);
-		}
-
-		inline void	clear() {
-			if (strategy.clear) strategy.clear(context);
-		}
-
-	};
-
-	Buffer	standardCAlloc(Any* memoryContext, USize size) {
-		auto ptr = malloc(size);
-		return Buffer::fromArray(Generics::arrayFrom((Byte*)ptr, ptr ? size : 0));
-	}
-
-	Buffer	standardCRealloc(Any* memoryContext, USize size, Buffer buffer) {
-		auto ptr = realloc(buffer.data, size);
-		return Buffer::fromArray(Generics::arrayFrom((Byte*)ptr, ptr ? size : 0));
-	}
-
-	void	standardCDealloc(Any* memoryContext, Buffer buffer) {
-		free(buffer.data);
-	}
-
-	Allocator StandardCAllocator {
-		null, {
-			&standardCAlloc,
-			&standardCRealloc,
-			&standardCDealloc,
-			null
-		}
-	};
-
-	template<typename T>
-	Generics::Array<T>	AllocArray(Allocator& allocator, USize count) {
-		return Generics::arrayCast<T>(allocator.alloc(sizeof(T) * count));
-	}
-
-	template<typename T, typename... Args>
-	T*	New(Allocator& allocator, Args&&... args) {
-		auto obj = &Generics::arrayCast<T>(allocator.alloc(sizeof(T)))[0];
-		if (obj) return new (obj) T(std::forward<Args>(args)...);
-		else return null;
-	}
-
-	template<typename T>
-	void	Delete(Allocator &allocator, T *obj) {
-		obj.~T();
-		allocator.dealloc(Buffer::fromObj(*obj));
-	}
-
-} // namespace Memory
-
+Alloc std_allocator = { null, &std_alloc_strategy };
 
 #endif
