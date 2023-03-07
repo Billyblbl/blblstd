@@ -7,43 +7,39 @@
 Arena virtual_arena_create(usize size) { return { virtual_alloc(size), 0 }; }
 
 void virtual_arena_destroy(Arena& arena) {
-	arena.count = 0;
+	arena.current = 0;
 	auto to_dealloc = arena.capacity;
 	arena.capacity = {};
 	virtual_dealloc(to_dealloc);
 }
 
 Arena& virtual_arena_reset(Arena& arena) {
-	arena.count = 0;
 	virtual_decommit(arena.capacity);
+	reset(arena);
 	return arena;
 }
 
 Buffer virtual_arena_alloc(Arena& arena, Buffer buffer, usize size) {
 	if (size == 0) {
 		virtual_decommit(buffer);
+		if (buffer.end() == arena.allocated().end())
+			arena.pop_range(buffer.size());
 		return {};
 	}
 
 	if (buffer.end() == arena.allocated().end() && arena.capacity.end() >= buffer.begin() + size) { // can change buffer in place
 
 		if (buffer.size() < size) { // grow buffer
-			auto to_append = arena.allocate(size - buffer.size());
-			auto appended = virtual_commit(to_append);
+			auto appended = virtual_commit(arena.allocate(size - buffer.size()));
 			return Buffer(buffer.begin(), appended.end());
-
 		} else if (buffer.size() > size) { // shrink buffer
-			auto to_pop = Buffer(arena.allocated().end(), buffer.size() - size);
-			arena.count -= to_pop.size();
-			virtual_decommit(to_pop);
+			virtual_decommit(arena.pop_range(buffer.size() - size));
 			return Buffer(buffer.begin(), size);
-
 		} else return buffer;
 
 	} else { // have to use new buffer
 
-		auto new_buffer = arena.allocate(size);
-		new_buffer = virtual_commit(new_buffer);
+		auto new_buffer = virtual_commit(arena.allocate(size));
 		if (buffer.data() != null) { // move if there's an old buffer
 			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), size));
 			virtual_decommit(buffer);

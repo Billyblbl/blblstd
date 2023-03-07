@@ -5,10 +5,11 @@
 #include <stdlib.h>
 
 using Buffer = Array<byte>;
+using AllocStrat = Buffer(*)(any*, Buffer, usize);
 
 struct Alloc {
 	any* context;
-	Buffer(*strategy)(any*, Buffer, usize);
+	AllocStrat strategy;
 	inline Buffer alloc(usize size) { return strategy(context, {}, size); }
 	inline Buffer realloc(Buffer buffer, usize size) { return strategy(context, buffer, size); }
 	inline void dealloc(Buffer buffer) { strategy(context, buffer, 0); }

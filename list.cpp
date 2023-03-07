@@ -6,55 +6,55 @@
 
 template<typename T> struct List {
 	Array<T> capacity;
-	usize count;
+	usize current;
 
 	auto& push(T&& element) {
-		assert(count < capacity.size());
-		return capacity[count++] = element;
+		assert(current < capacity.size());
+		return capacity[current++] = element;
 	}
 
 	auto pop() {
-		assert(count > 0);
-		return std::move(capacity[--count]);
+		assert(current > 0);
+		return std::move(capacity[--current]);
 	}
 
 	auto allocate(usize count) {
-		auto start = count;
-		count += count;
-		return capacity.subspan(start, count);
+		auto start = current;
+		current += count;
+		return capacity.subspan(start, current);
 	}
 
 	auto pop_range(usize count) {
-		count -= count;
-		return capacity.subspan(count, count);
+		current -= count;
+		return capacity.subspan(current, count);
 	}
 
 	auto& swap_in(usize index, T&& element) {
-		assert(count < capacity.size());
-		capacity[count++] = std::move(capacity[index]);
+		assert(current < capacity.size());
+		capacity[current++] = std::move(capacity[index]);
 		return capacity[index] = element;
 	}
 
 	auto swap_out(usize index) {
-		assert(count > 0);
+		assert(current > 0);
 		auto tmp = std::move(capacity[index]);
-		capacity[index] = std::move(capacity[--count]);
+		capacity[index] = std::move(capacity[--current]);
 		return tmp;
 	}
 
 	auto allocated() const {
-		return capacity.subspan(0, count);
+		return capacity.subspan(0, current);
 	}
 
 	bool grow(Alloc& alloc) {
-		if (count >= capacity.size()) {
+		if (current >= capacity.size()) {
 			capacity = realloc_array(alloc, capacity, capacity.size() * 2);
 			return true;
 		} else return false;
 	}
 
 	bool reduce(Alloc& alloc) {
-		if (count < capacity.size() / 2) {
+		if (current < capacity.size() / 2) {
 			capacity = realloc_array(alloc, capacity, capacity.size() / 2);
 			return true;
 		} else return false;

@@ -40,18 +40,16 @@ using any = void;
 
 template<typename T> using Array = std::span<T>;
 template<typename T, typename U> inline auto cast(Array<U> arr) {
-	return Array<T> ( (T*)arr.data(), arr.size() * sizeof(U) / sizeof(T) );
+	return Array<T> ( (T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T) );
 }
+template<typename T, usize S> inline auto literal(T (&arr)[S]) { return Array<T>(arr, S); }
 
 constexpr auto null = nullptr;
 
-auto min(auto a, auto b) {
-	return a < b ? a : b;
-}
-
-auto max(auto a, auto b) {
-	return a > b ? a : b;
-}
+inline auto min(auto a, auto b) { return a < b ? a : b; }
+inline auto max(auto a, auto b) { return a > b ? a : b; }
+inline auto min(auto... v, auto a) { return min(min(v...), a); }
+inline auto max(auto... v, auto a) { return max(max(v...), a); }
 
 // System guard
 static_assert(sizeof(u8) == 1);

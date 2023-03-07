@@ -6,7 +6,11 @@
 		"span": "cpp",
 		"array": "cpp",
 		"string_view": "cpp",
-		"initializer_list": "cpp"
+		"initializer_list": "cpp",
+		"atomic": "cpp",
+		"algorithm": "cpp",
+		"memory_resource": "cpp",
+		"semaphore": "cpp"
 	},
 	"godot_tools.scene_file_config": "d:\\Projects\\astostd\\String.cpp"
 }

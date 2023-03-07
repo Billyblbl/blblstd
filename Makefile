@@ -15,4 +15,9 @@ $(BUILD_DIR):
 $(EXECUTABLE): $(SRC)
 	$(CXX) $(CFLAGS) $^ $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS) -o $@
 
+clean:
+	rm -rf $(BUILD_DIR)
+
+re: clean exe
+
 .PHONY: exe
