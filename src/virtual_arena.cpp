@@ -4,6 +4,16 @@
 #include <virtual_memory.cpp>
 #include <arena.cpp>
 
+Arena virtual_arena_create(usize size);
+void virtual_arena_destroy(Arena& arena);
+Arena& virtual_arena_reset(Arena& arena);
+Buffer virtual_arena_alloc(Arena& arena, Buffer buffer, usize size);
+Buffer virtual_arena_strategy(any* ctx, Buffer buffer, usize size);
+Alloc as_v_alloc(Arena& arena);
+Alloc self_contained_virtual_arena_alloc(usize size);
+
+#ifdef BLBLSTD_IMPL
+
 Arena virtual_arena_create(usize size) { return { virtual_alloc(size), 0 }; }
 
 void virtual_arena_destroy(Arena& arena) {
@@ -61,5 +71,7 @@ Alloc self_contained_virtual_arena_alloc(usize size) {
 	allocator.context = &dest;
 	return allocator;
 }
+
+#endif
 
 #endif

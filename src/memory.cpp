@@ -33,11 +33,15 @@ template<typename T> inline Array<T> duplicate_array(Alloc allocator, Array<T> a
 	return other;
 }
 
+extern Alloc std_allocator;
+
+#ifdef BLBLSTD_IMPL
+
 Buffer std_alloc_strategy(any*, Buffer buffer, usize size) {
 	auto ptr = realloc(buffer.data(), size);
 	return Buffer((byte*)ptr, ptr != null ? size : 0);
 }
-
 Alloc std_allocator = { null, &std_alloc_strategy };
+#endif
 
 #endif

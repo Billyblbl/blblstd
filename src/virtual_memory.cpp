@@ -3,10 +3,18 @@
 
 #include <memory.cpp>
 
-#if defined(PLATFORM_WINDOWS)
+Buffer virtual_alloc(usize size, bool commit = false);
+Buffer virtual_commit(Buffer buffer);
+void virtual_decommit(Buffer buffer);
+void virtual_dealloc(Buffer buffer);
+
+#ifdef BLBLSTD_IMPL
+
+
+	#if defined(PLATFORM_WINDOWS)
 #include <windows.h>
 
-Buffer virtual_alloc(usize size, bool commit = false) {
+Buffer virtual_alloc(usize size, bool commit) {
 	auto ptr = VirtualAlloc(null, size, MEM_RESERVE | (commit ? MEM_COMMIT : 0), PAGE_READWRITE);
 	if (!ptr) {
 		auto err = GetLastError();
@@ -42,9 +50,9 @@ void virtual_dealloc(Buffer buffer) {
 	}
 }
 
-#elif defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_ANDROID)
+	#elif defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_ANDROID)
 
-Buffer virtual_alloc(usize size, bool commit = false) {
+Buffer virtual_alloc(usize size, bool commit) {
 	auto ptr = mmap(null, size, commit ? PROT_READ | PROT_WRITE : PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (ptr == MAP_FAILED) {
 		//TODO logs from errno
@@ -76,6 +84,8 @@ void virtual_dealloc(Buffer buffer) {
 		//TODO logs from errno
 	}
 }
+
+	#endif
 
 #endif
 

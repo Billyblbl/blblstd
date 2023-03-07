@@ -9,7 +9,6 @@ template<typename T> struct LinkList {
 	T* last = nullptr;
 };
 
-
 #pragma region Single link
 
 template<typename T, T* T::* l> struct ListIterator {

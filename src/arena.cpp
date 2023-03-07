@@ -7,7 +7,13 @@
 using Arena = List<byte>;
 
 template<typename T> auto as_arena(Array<T> buffer) { return Arena { cast<byte>(buffer), 0 }; }
+Buffer stack_alloc(Arena& arena, Buffer buffer, usize size);
+void reset(Arena& arena);
+Buffer stack_alloc_strategy(any* ctx, Buffer buffer, usize size);
+Alloc as_stack(Arena& arena);
+Arena& self_contain(Arena&& arena);
 
+#ifdef BLBLSTD_IMPL
 Buffer stack_alloc(Arena& arena, Buffer buffer, usize size) {
 	if (size == 0) {
 		if (buffer.end() == arena.allocated().end())
@@ -40,5 +46,7 @@ Alloc as_stack(Arena& arena) { return Alloc { &arena, &stack_alloc_strategy }; }
 Arena& self_contain(Arena&& arena) {
 	return cast<Arena>(arena.allocate(sizeof(Arena)))[0] = std::move(arena);
 }
+
+#endif
 
 #endif
