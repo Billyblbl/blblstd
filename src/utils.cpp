@@ -1,7 +1,6 @@
 #ifndef G_UTILS
 # define G_UTILS
 
-#include <functional>
 #include <stdint.h>
 #include <cstddef>
 #include <span>
@@ -42,7 +41,10 @@ template<typename T> using Array = std::span<T>;
 template<typename T, typename U> inline auto cast(Array<U> arr) {
 	return Array<T> ( (T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T) );
 }
-template<typename T, usize S> inline auto literal(T (&arr)[S]) { return Array<T>(arr, S); }
+template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
+template<usize S> inline auto lutf(u8 (&arr)[S]) { return utf8(arr, S); }
+template<usize S> inline auto lutf(u16 (&arr)[S]) { return utf16(arr, S); }
+template<usize S> inline auto lutf(u32 (&arr)[S]) { return utf32(arr, S); }
 
 constexpr auto null = nullptr;
 
