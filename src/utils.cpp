@@ -6,6 +6,7 @@
 #include <span>
 #include <string_view>
 #include <assert.h>
+#include <tuple>
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -37,14 +38,27 @@ using utf32 = std::u32string_view;
 
 using any = void;
 
+template<typename... T> using tuple = std::tuple<T...>;
+
 template<typename T> using Array = std::span<T>;
 template<typename T, typename U> inline auto cast(Array<U> arr) {
 	return Array<T> ( (T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T) );
 }
+
+template<typename T, usize S> inline consteval usize array_size(const T (&)[S]) { return S; }
+template<typename T, usize S> inline consteval usize array_size(T (&)[S]) { return S; }
 template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
-template<usize S> inline auto lutf(u8 (&arr)[S]) { return utf8(arr, S); }
-template<usize S> inline auto lutf(u16 (&arr)[S]) { return utf16(arr, S); }
-template<usize S> inline auto lutf(u32 (&arr)[S]) { return utf32(arr, S); }
+template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
+// template<typename T> inline auto larray(std::initializer_list<T> il) { return Array<T>(il.begin(), il.end()); }
+template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr, S); }
+template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr, S); }
+template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr, S); }
+template<usize S> inline auto lutf(const u32 (&arr)[S]) { return utf32((char32_t*)&arr, S); }
+
+inline auto bit(auto index) { return 1 << index; }
+inline auto mask(auto... index) { return (bit(index) | ...); }
+inline bool has_all(auto flags, auto mask) { return (flags & mask) == mask; }
+inline bool has_one(auto flags, auto mask) { return flags & mask; }
 
 constexpr auto null = nullptr;
 
@@ -65,11 +79,32 @@ static_assert(sizeof(i64) == 8);
 static_assert(sizeof(f32) == 4);
 static_assert(sizeof(f64) == 8);
 
-template<class I> struct range {
-	I b, e;
+template<typename I> struct it_range {
+	I b;
+	I e;
 	constexpr I begin() const noexcept { return b; }
 	constexpr I end() const noexcept { return e; }
 };
+
+template<typename I> struct idx_iterator {
+	I value;
+	auto& operator++() { value++; return *this; }
+	auto operator*() {return value;};
+	idx_iterator(I _value) noexcept : value(_value) {}
+	bool operator!=(idx_iterator<I> rhs) { return value != rhs.value; }
+};
+
+template<typename I> using idx_range = it_range<idx_iterator<I>>;
+
+using u64range = idx_range<u64>;
+using u32range = idx_range<u32>;
+using u16range = idx_range<u16>;
+using u8range = idx_range<u8>;
+
+using i64range = idx_range<i64>;
+using i32range = idx_range<i32>;
+using i16range = idx_range<i16>;
+using i8range = idx_range<i8>;
 
 template<typename Callable> struct DeferedCall {
 	Callable call;

@@ -13,6 +13,11 @@ template<typename T> struct List {
 		return capacity[current++] = element;
 	}
 
+	auto& push(const T& element) {
+		assert(current < capacity.size());
+		return capacity[current++] = element;
+	}
+
 	auto pop() {
 		assert(current > 0);
 		return std::move(capacity[--current]);

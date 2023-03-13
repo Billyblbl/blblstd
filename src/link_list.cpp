@@ -53,14 +53,14 @@ template<typename T, T* T::* l> bool operator!=(ListIterator<T, l> a, ListIterat
 }
 
 template<typename T, T* T::* l> auto traverse_by(T* start) {
-	return range{
+	return it_range{
 		ListIterator<T, l> { start },
 		ListIterator<T, l> { nullptr }
 	};
 };
 
 template<typename T, T* T::* l> auto traverse_by(const LinkList<T>& list) {
-	return range{
+	return it_range{
 		ListIterator<T, l> { list.first },
 		ListIterator<T, l> { list.last->*l }
 	};
@@ -68,7 +68,7 @@ template<typename T, T* T::* l> auto traverse_by(const LinkList<T>& list) {
 
 template<typename T, T* T::* l> auto link_range_incl(T* first, T* last) { return traverse_by<T, l>(LinkList { first, last }); }
 template<typename T, T* T::* l> auto link_range_excl(T* begin, T* end) {
-	return range {
+	return it_range {
 		ListIterator<T, l> { begin },
 		ListIterator<T, l> { end }
 	};
@@ -133,14 +133,14 @@ template<typename T, DoubleLink<T> T::* l> bool operator!=(DoubleListIterator<T,
 }
 
 template<typename T, DoubleLink<T> T::* l> auto traverse_by(T* start) {
-	return range{
+	return it_range{
 		DoubleListIterator<T, l> { start },
 		DoubleListIterator<T, l> { nullptr }
 	};
 };
 
 template<typename T, DoubleLink<T> T::* l> auto traverse_by(const LinkList<T>& list) {
-	return range{
+	return it_range{
 		DoubleListIterator<T, l> { list.first },
 		DoubleListIterator<T, l> { (list.last->*l).next }
 	};
@@ -148,7 +148,7 @@ template<typename T, DoubleLink<T> T::* l> auto traverse_by(const LinkList<T>& l
 
 template<typename T, DoubleLink<T> T::* l> auto link_range_incl(T* first, T* last) { return traverse_by<T, l>(LinkList { first, last }); }
 template<typename T, DoubleLink<T> T::* l> auto link_range_excl(T* begin, T* end) {
-	return range {
+	return it_range {
 		DoubleListIterator<T, l> { begin },
 		DoubleListIterator<T, l> { end }
 	};
