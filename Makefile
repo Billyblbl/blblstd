@@ -6,7 +6,7 @@ CXX=$(GXX_PATH)
 BIN = $(BUILD_DIR)/blblstd.o
 
 MAIN = src/blblstd.cpp
-SRC = src/blblstd.cpp
+SRC = $(MAIN)
 SRC += src/blblstd.hpp
 SRC += src/arena.cpp
 SRC += src/link_list.cpp
@@ -22,6 +22,8 @@ INC += src
 LIB = .
 CFLAGS = -g3 -std=c++20
 
+COLOR=\033[0;34m
+NOCOLOR=\033[0m
 
 bin: $(BIN)
 
@@ -29,7 +31,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BIN): $(BUILD_DIR) $(SRC)
-	$(CXX) $(CFLAGS) -c $(MAIN) $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS) -o $@
+	@echo -e "Building $(COLOR)blblstd$(NOCOLOR)"
+	@$(CXX) $(CFLAGS) -c $(MAIN) $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS) -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
