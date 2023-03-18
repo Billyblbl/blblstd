@@ -32,6 +32,9 @@ using byte = unsigned char;
 using cstr = char[];
 using cstrp = char*;
 
+using str = std::string_view;
+using wstr = std::wstring_view;
+
 using utf8 = std::u8string_view;
 using utf16 = std::u16string_view;
 using utf32 = std::u32string_view;
@@ -50,13 +53,15 @@ template<typename T, usize S> inline consteval usize array_size(T (&)[S]) { retu
 template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
 template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
 // template<typename T> inline auto larray(std::initializer_list<T> il) { return Array<T>(il.begin(), il.end()); }
+template<usize S> inline auto lstr(const char (&arr)[S]) { return str(&arr, S); }
+template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstr(&arr, S); }
 template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr, S); }
 template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr, S); }
 template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr, S); }
 template<usize S> inline auto lutf(const u32 (&arr)[S]) { return utf32((char32_t*)&arr, S); }
 
-inline auto bit(auto index) { return 1 << index; }
-inline auto mask(auto... index) { return (bit(index) | ...); }
+template<typename T> inline T bit(auto index) { return (T)1 << index; }
+template<typename T> inline T mask(auto... index) { return (bit<T>(index) | ...); }
 inline bool has_all(auto flags, auto mask) { return (flags & mask) == mask; }
 inline bool has_one(auto flags, auto mask) { return flags & mask; }
 
