@@ -30,7 +30,8 @@ using isize = ptrdiff_t;
 using byte = unsigned char;
 
 using cstr = char[];
-using cstrp = char*;
+using mutcstrp = char*;
+using cstrp = const char*;
 
 using str = std::string_view;
 using wstr = std::wstring_view;
@@ -44,6 +45,7 @@ using any = void;
 template<typename... T> using tuple = std::tuple<T...>;
 
 template<typename T> using Array = std::span<T>;
+template<typename T> using LiteralArray = std::initializer_list<T>;
 template<typename T, typename U> inline auto cast(Array<U> arr) {
 	return Array<T> ( (T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T) );
 }
@@ -52,13 +54,14 @@ template<typename T, usize S> inline consteval usize array_size(const T (&)[S]) 
 template<typename T, usize S> inline consteval usize array_size(T (&)[S]) { return S; }
 template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
 template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
-// template<typename T> inline auto larray(std::initializer_list<T> il) { return Array<T>(il.begin(), il.end()); }
-template<usize S> inline auto lstr(const char (&arr)[S]) { return str(&arr, S); }
-template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstr(&arr, S); }
-template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr, S); }
-template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr, S); }
-template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr, S); }
-template<usize S> inline auto lutf(const u32 (&arr)[S]) { return utf32((char32_t*)&arr, S); }
+template<typename T> inline auto larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
+template<usize S> inline auto lstr(const char (&arr)[S]) { return str(&arr[0], S); }
+template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstr(&arr[0], S); }
+template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
+template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
+template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr[0], S); }
+template<usize S> inline auto lutf(const u32 (&arr)[S]) { return utf32((char32_t*)&arr[0], S); }
+
 
 template<typename T> inline T bit(auto index) { return (T)1 << index; }
 template<typename T> inline T mask(auto... index) { return (bit<T>(index) | ...); }
