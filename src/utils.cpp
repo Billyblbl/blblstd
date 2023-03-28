@@ -51,7 +51,6 @@ template<typename T, typename U> inline auto cast(Array<U> arr) {
 }
 
 template<typename T, usize S> inline consteval usize array_size(const T (&)[S]) { return S; }
-template<typename T, usize S> inline consteval usize array_size(T (&)[S]) { return S; }
 template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
 template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
 template<typename T> inline auto larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
