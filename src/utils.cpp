@@ -33,8 +33,8 @@ using cstr = char[];
 using mutcstrp = char*;
 using cstrp = const char*;
 
-using str = std::string_view;
-using wstr = std::wstring_view;
+using string = std::string_view;
+using wstring = std::wstring_view;
 
 using utf8 = std::u8string_view;
 using utf16 = std::u16string_view;
@@ -54,8 +54,8 @@ template<typename T, usize S> inline consteval usize array_size(const T (&)[S]) 
 template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
 template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
 template<typename T> inline auto larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
-template<usize S> inline auto lstr(const char (&arr)[S]) { return str(&arr[0], S); }
-template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstr(&arr[0], S); }
+template<usize S> inline auto lstr(const char (&arr)[S]) { return string(&arr[0], S); }
+template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstring(&arr[0], S); }
 template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
 template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
 template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr[0], S); }

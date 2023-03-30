@@ -20,7 +20,7 @@ INC = .
 INC += src
 
 LIB = .
-CFLAGS = -g3 -std=c++20
+CFLAGS = -g3 -std=c++20 -fno-exceptions
 
 COLOR=\033[0;34m
 NOCOLOR=\033[0m
