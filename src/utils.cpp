@@ -87,8 +87,7 @@ static_assert(sizeof(f32) == 4);
 static_assert(sizeof(f64) == 8);
 
 template<typename I> struct it_range {
-	I b;
-	I e;
+	I b, e;
 	constexpr I begin() const noexcept { return b; }
 	constexpr I end() const noexcept { return e; }
 };
@@ -103,15 +102,32 @@ template<typename I> struct idx_iterator {
 
 template<typename I> using idx_range = it_range<idx_iterator<I>>;
 
-using u64range = idx_range<u64>;
-using u32range = idx_range<u32>;
-using u16range = idx_range<u16>;
-using u8range = idx_range<u8>;
+using u64xrange = idx_range<u64>;
+using u32xrange = idx_range<u32>;
+using u16xrange = idx_range<u16>;
+using u8xrange = idx_range<u8>;
 
-using i64range = idx_range<i64>;
-using i32range = idx_range<i32>;
-using i16range = idx_range<i16>;
-using i8range = idx_range<i8>;
+using i64xrange = idx_range<i64>;
+using i32xrange = idx_range<i32>;
+using i16xrange = idx_range<i16>;
+using i8xrange = idx_range<i8>;
+
+template<typename N> struct num_range { N min, max; };
+
+template<typename N> idx_range<idx_iterator<N>> iter(num_range<N> range) { return { range.min, range.max + 1 }; }
+
+using u64range = num_range<u64>;
+using u32range = num_range<u32>;
+using u16range = num_range<u16>;
+using u8range = num_range<u8>;
+
+using i64range = num_range<i64>;
+using i32range = num_range<i32>;
+using i16range = num_range<i16>;
+using i8range = num_range<i8>;
+
+using f64range = num_range<f64>;
+using f32range = num_range<f32>;
 
 template<typename Callable> struct DeferedCall {
 	Callable call;
@@ -122,6 +138,7 @@ template<typename Callable> struct DeferedCall {
 #define deferVarName(line) DeferedCall defered_call_##line = [&]()
 #define deferVarNameHelper(line) deferVarName(line)
 #define defer deferVarNameHelper(__LINE__)
+
 
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
  #define PLATFORM_WINDOWS
@@ -141,5 +158,8 @@ template<typename Callable> struct DeferedCall {
 #if defined(__ANDROID__)
  #define PLATFORM_ANDROID
 #endif
+
+#define fail_ret(m, x) ((fprintf(stderr, "%s:%u %s failed : %s", __FILE__, __LINE__, __FUNCTION__, m)), x)
+#define expect(x) (x ? x : fail_ret(#x, x))
 
 #endif
