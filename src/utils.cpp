@@ -159,7 +159,7 @@ template<typename Callable> struct DeferedCall {
  #define PLATFORM_ANDROID
 #endif
 
-#define fail_ret(m, x) ((fprintf(stderr, "%s:%u %s failed : %s", __FILE__, __LINE__, __FUNCTION__, m)), x)
+#define fail_ret(m, x) ((fprintf(stderr, "%s:%u %s failed : %s\n", __FILE__, __LINE__, __FUNCTION__, m)), x)
 #define expect(x) (x ? x : fail_ret(#x, x))
 
 #endif
