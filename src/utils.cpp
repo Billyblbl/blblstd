@@ -56,11 +56,13 @@ template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, 
 template<typename T> inline auto larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
 template<usize S> inline auto lstr(const char (&arr)[S]) { return string(&arr[0], S); }
 template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstring(&arr[0], S); }
+template<usize S> inline auto lutf(const char8_t (&arr)[S]) { return utf8(arr, S); }
+template<usize S> inline auto lutf(const char16_t (&arr)[S]) { return utf16(arr, S); }
+template<usize S> inline auto lutf(const char32_t (&arr)[S]) { return utf32(arr, S); }
 template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
 template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
 template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr[0], S); }
 template<usize S> inline auto lutf(const u32 (&arr)[S]) { return utf32((char32_t*)&arr[0], S); }
-
 
 template<typename T> inline T bit(auto index) { return (T)1 << index; }
 template<typename T> inline T mask(auto... index) { return (bit<T>(index) | ...); }

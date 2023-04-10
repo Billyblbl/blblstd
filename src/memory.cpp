@@ -29,7 +29,7 @@ template<typename T> inline void dealloc_array(Alloc allocator, Array<T> arr) {
 
 template<typename T> inline Array<T> duplicate_array(Alloc allocator, Array<T> arr) {
 	auto other = alloc_array<T>(allocator, arr.size());
-	memcpy(other.data(), arr.data(), arr.size());
+	memcpy(other.data(), arr.data(), arr.size_bytes());
 	return other;
 }
 
