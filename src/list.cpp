@@ -47,13 +47,26 @@ template<typename T> struct List {
 		return tmp;
 	}
 
+	void remove_ordered(usize index) {
+		for (auto i : u64xrange{ index, current - 1 })
+			allocated()[i] = allocated()[i + 1];
+	}
+
+	inline void remove(usize index, bool ordered = false) {
+		if (ordered) {
+			remove_ordered(index);
+		} else {
+			swap_out(index);
+		}
+	}
+
 	auto allocated() const {
 		return capacity.subspan(0, current);
 	}
 
 	bool grow(Alloc& alloc) {
 		if (current >= capacity.size()) {
-			capacity = realloc_array(alloc, capacity, capacity.size() * 2);
+			capacity = realloc_array(alloc, capacity, max(1, capacity.size()) * 2);
 			return true;
 		} else return false;
 	}

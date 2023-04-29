@@ -47,22 +47,31 @@ template<typename... T> using tuple = std::tuple<T...>;
 template<typename T> using Array = std::span<T>;
 template<typename T> using LiteralArray = std::initializer_list<T>;
 template<typename T, typename U> inline auto cast(Array<U> arr) {
-	return Array<T> ( (T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T) );
+	return Array<T>((T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T));
 }
 
-template<typename T, usize S> inline consteval usize array_size(const T (&)[S]) { return S; }
-template<typename T, usize S> inline auto larray(T (&arr)[S]) { return Array<T>(arr, S); }
+template<typename T, u64... indices> auto to_tuple_helper(std::integer_sequence<u64, indices...> int_seq, Array<T> arr) {
+	return tuple(arr[indices]...);
+}
+
+template<usize S, typename T> auto to_tuple(Array<T> arr) {
+	assert(arr.size() >= S);
+	return to_tuple_helper(std::make_integer_sequence<u64, S>{}, arr);
+}
+
+template<typename T, usize S> inline consteval usize array_size(const T(&)[S]) { return S; }
+template<typename T, usize S> inline auto larray(T(&arr)[S]) { return Array<T>(arr, S); }
 template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
 template<typename T> inline auto larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
-template<usize S> inline auto lstr(const char (&arr)[S]) { return string(&arr[0], S); }
-template<usize S> inline auto lstr(const wchar_t (&arr)[S]) { return wstring(&arr[0], S); }
-template<usize S> inline auto lutf(const char8_t (&arr)[S]) { return utf8(arr, S); }
-template<usize S> inline auto lutf(const char16_t (&arr)[S]) { return utf16(arr, S); }
-template<usize S> inline auto lutf(const char32_t (&arr)[S]) { return utf32(arr, S); }
-template<usize S> inline auto lutf(const char (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
-template<usize S> inline auto lutf(const u8 (&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
-template<usize S> inline auto lutf(const u16 (&arr)[S]) { return utf16((char16_t*)&arr[0], S); }
-template<usize S> inline auto lutf(const u32 (&arr)[S]) { return utf32((char32_t*)&arr[0], S); }
+template<usize S> inline auto lstr(const char(&arr)[S]) { return string(&arr[0], S); }
+template<usize S> inline auto lstr(const wchar_t(&arr)[S]) { return wstring(&arr[0], S); }
+template<usize S> inline auto lutf(const char8_t(&arr)[S]) { return utf8(arr, S); }
+template<usize S> inline auto lutf(const char16_t(&arr)[S]) { return utf16(arr, S); }
+template<usize S> inline auto lutf(const char32_t(&arr)[S]) { return utf32(arr, S); }
+template<usize S> inline auto lutf(const char(&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
+template<usize S> inline auto lutf(const u8(&arr)[S]) { return utf8((char8_t*)&arr[0], S); }
+template<usize S> inline auto lutf(const u16(&arr)[S]) { return utf16((char16_t*)&arr[0], S); }
+template<usize S> inline auto lutf(const u32(&arr)[S]) { return utf32((char32_t*)&arr[0], S); }
 
 template<typename T> inline T bit(auto index) { return (T)1 << index; }
 template<typename T> inline T mask(auto... index) { return (bit<T>(index) | ...); }
@@ -97,7 +106,7 @@ template<typename I> struct it_range {
 template<typename I> struct idx_iterator {
 	I value;
 	auto& operator++() { value++; return *this; }
-	auto operator*() {return value;};
+	auto operator*() { return value; };
 	idx_iterator(I _value) noexcept : value(_value) {}
 	bool operator!=(idx_iterator<I> rhs) { return value != rhs.value; }
 };
@@ -116,7 +125,8 @@ using i8xrange = idx_range<i8>;
 
 template<typename N> struct num_range { N min, max; };
 
-template<typename N> idx_range<idx_iterator<N>> iter(num_range<N> range) { return { range.min, range.max + 1 }; }
+template<typename N> idx_range<N> iter_inc(num_range<N> range) { return { range.min, range.max + 1 }; }
+template<typename N> idx_range<N> iter_ex(num_range<N> range) { return { range.min, range.max }; }
 
 using u64range = num_range<u64>;
 using u32range = num_range<u32>;
@@ -131,9 +141,11 @@ using i8range = num_range<i8>;
 using f64range = num_range<f64>;
 using f32range = num_range<f32>;
 
+template<typename T> num_range<usize> array_indices(Array<T> arr) { return {0, arr.size() - 1}; }
+
 template<typename Callable> struct DeferedCall {
 	Callable call;
-	DeferedCall(Callable&& _call): call(std::move(_call)) {}
+	DeferedCall(Callable&& _call) : call(std::move(_call)) {}
 	~DeferedCall() { call(); }
 };
 
@@ -143,22 +155,22 @@ template<typename Callable> struct DeferedCall {
 
 
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
- #define PLATFORM_WINDOWS
+#define PLATFORM_WINDOWS
 #endif
 #if defined(unix) || defined(__unix) || defined(__unix__)
- #define PLATFORM_UNIX
+#define PLATFORM_UNIX
 #endif
 #if defined(__APPLE__) || defined(__MACH__)
- #define PLATFORM_OSX
+#define PLATFORM_OSX
 #endif
 #if defined(__linux__) || defined(linux) || defined(__linux)
- #define PLATFORM_LINUX
+#define PLATFORM_LINUX
 #endif
 #if defined(FreeBSD) || defined(__FreeBSD__)
- #define PLATFORM_BSD
+#define PLATFORM_BSD
 #endif
 #if defined(__ANDROID__)
- #define PLATFORM_ANDROID
+#define PLATFORM_ANDROID
 #endif
 
 #define fail_ret(m, x) ((fprintf(stderr, "%s:%u %s failed : %s\n", __FILE__, __LINE__, __FUNCTION__, m)), x)
