@@ -52,6 +52,21 @@ template<typename T> struct List {
 			allocated()[i] = allocated()[i + 1];
 	}
 
+	auto& insert_ordered(usize index, T&& element) {
+		assert(current < capacity.size());
+		if (index < current) for (auto i : u64xrange{ index, current - 1 })
+			allocated()[i + 1] = allocated()[i];
+		return allocated()[index] = element;
+	}
+
+	inline auto& insert(usize index, T&& element, bool ordered = false) {
+		if (ordered) {
+			return insert_ordered(index, element);
+		} else {
+			return swap_in(index, element);
+		}
+	}
+
 	inline void remove(usize index, bool ordered = false) {
 		if (ordered) {
 			remove_ordered(index);
