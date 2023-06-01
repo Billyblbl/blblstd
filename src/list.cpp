@@ -34,7 +34,7 @@ template<typename T> struct List {
 		return capacity.subspan(current, count);
 	}
 
-	auto& swap_in(usize index, T&& element) {
+	auto& swap_in(usize index, const T& element) {
 		assert(current < capacity.size());
 		capacity[current++] = std::move(capacity[index]);
 		return capacity[index] = element;
@@ -52,14 +52,14 @@ template<typename T> struct List {
 			allocated()[i] = allocated()[i + 1];
 	}
 
-	auto& insert_ordered(usize index, T&& element) {
+	auto& insert_ordered(usize index, const T& element) {
 		assert(current < capacity.size());
 		if (index < current) for (auto i : u64xrange{ index, current - 1 })
 			allocated()[i + 1] = allocated()[i];
 		return allocated()[index] = element;
 	}
 
-	inline auto& insert(usize index, T&& element, bool ordered = false) {
+	inline auto& insert(usize index, const T& element, bool ordered = false) {
 		if (ordered) {
 			return insert_ordered(index, element);
 		} else {

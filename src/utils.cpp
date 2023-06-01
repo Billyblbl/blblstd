@@ -59,6 +59,10 @@ template<usize S, typename T> auto to_tuple(Array<T> arr) {
 	return to_tuple_helper(std::make_integer_sequence<u64, S>{}, arr);
 }
 
+template<typename T> i64 linear_search(Array<T> arr, const T& obj, i64 start = 0) {
+	return linear_search(arr, [&](const T& it) {return it == obj;}, start);
+}
+
 template<typename T, usize S> inline consteval usize array_size(const T(&)[S]) { return S; }
 template<typename T, usize S> inline auto larray(T(&arr)[S]) { return Array<T>(arr, S); }
 template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
@@ -123,7 +127,7 @@ using i32xrange = idx_range<i32>;
 using i16xrange = idx_range<i16>;
 using i8xrange = idx_range<i8>;
 
-template<typename N> struct num_range { N min, max; };
+template<typename N> struct num_range { N min, max; N size() { return max - min; } };
 
 template<typename N> idx_range<N> iter_inc(num_range<N> range) { return { range.min, range.max + 1 }; }
 template<typename N> idx_range<N> iter_ex(num_range<N> range) { return { range.min, range.max }; }
@@ -141,7 +145,49 @@ using i8range = num_range<i8>;
 using f64range = num_range<f64>;
 using f32range = num_range<f32>;
 
-template<typename T> num_range<usize> array_indices(Array<T> arr) { return {0, arr.size() - 1}; }
+template<typename T> num_range<usize> array_indices(Array<T> arr) { return { 0, arr.size() - 1 }; }
+
+template<typename Ia, typename Ib> struct parallel_it {
+	Ia it_a; Ib it_b;
+	auto& operator++() { it_a++; it_b++; return *this; }
+	auto operator*() { return tuple(&(*it_a), &(*it_b)); };
+	bool operator!=(parallel_it<Ia, Ib> rhs) { return it_a != rhs.it_a || it_b != rhs.it_b; }
+};
+
+template<typename Ta, typename Tb> auto parallel_iter(Array<Ta> arra, Array<Tb> arrb) {
+	return it_range{
+		parallel_it {arra.begin(), arrb.begin()},
+		parallel_it {arra.end(), arrb.end()},
+	};
+}
+
+template<typename N> struct self_combinatronic_it {
+	N i;
+	N size;
+	auto& operator++() { i++; return *this; }
+	auto operator*() {
+		auto i1 = i / size;
+		auto i2 = i % size + i1 + 1;
+		return tuple(i1, i2);
+	};
+	bool operator!=(self_combinatronic_it<N> rhs) { return i != rhs.i || size != rhs.size; }
+};
+
+template<typename N> it_range<self_combinatronic_it<N>> self_combinatronic_idx(N count) {
+	return {
+		self_combinatronic_it<N> { 0, count },
+		self_combinatronic_it<N> { count* (count - 1) / 2, count }
+	};
+}
+
+template<typename T, typename P> i64 linear_search(Array<T> arr, P predicate, i64 start = 0) {
+	for (auto i : iter_inc(array_indices(arr))) {
+		auto index = (i + start) % arr.size();
+		if (predicate(arr[index]))
+			return index;
+	}
+	return -1;
+}
 
 template<typename Callable> struct DeferedCall {
 	Callable call;
