@@ -7,6 +7,7 @@
 #include <string_view>
 #include <assert.h>
 #include <tuple>
+#include <stdio.h>
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -199,9 +200,10 @@ template<typename Callable> struct DeferedCall {
 #define deferVarNameHelper(line) deferVarName(line)
 #define defer deferVarNameHelper(__LINE__)
 
-
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
 #define PLATFORM_WINDOWS
+// avoids having too many #define collisions
+#define WIN32_LEAN_AND_MEAN
 #endif
 #if defined(unix) || defined(__unix) || defined(__unix__)
 #define PLATFORM_UNIX
@@ -219,7 +221,8 @@ template<typename Callable> struct DeferedCall {
 #define PLATFORM_ANDROID
 #endif
 
-#define fail_ret(m, x) ((fprintf(stderr, "%s:%u %s failed : %s\n", __FILE__, __LINE__, __FUNCTION__, m)), x)
+#define fail_msg(msg) fprintf(stderr, "%s:%u %s failed : %s\n", __FILE__, __LINE__, __FUNCTION__, msg)
+#define fail_ret(m, x) (fail_msg(m), x)
 #define expect(x) (x ? x : fail_ret(#x, x))
 
 #endif

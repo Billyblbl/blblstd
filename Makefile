@@ -15,6 +15,7 @@ SRC += src/memory.cpp
 SRC += src/utils.cpp
 SRC += src/virtual_arena.cpp
 SRC += src/virtual_memory.cpp
+SRC += src/module.cpp
 
 INC = .
 INC += src
