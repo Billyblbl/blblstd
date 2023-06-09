@@ -168,7 +168,9 @@ template<typename N> struct self_combinatronic_it {
 	auto& operator++() { i++; return *this; }
 	auto operator*() {
 		auto i1 = i / size;
-		auto i2 = i % size + i1 + 1;
+		auto i2 = (i + 1 + i1) % size;
+		assert(i1 < size);
+		assert(i2 < size);
 		return tuple(i1, i2);
 	};
 	bool operator!=(self_combinatronic_it<N> rhs) { return i != rhs.i || size != rhs.size; }
