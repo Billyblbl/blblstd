@@ -5,16 +5,6 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "(Windows) Launch",
-			"type": "cppvsdbg",
-			"request": "launch",
-			"program": "${workspaceFolder}/build/test.exe",
-			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}",
-			"environment": [],
-			"console": "externalTerminal"
-		},
-		{
 			"name": "(gdb) Launch",
 			"type": "cppdbg",
 			"request": "launch",
@@ -35,6 +25,11 @@
 				{
 					"description": "Set Disassembly Flavor to Intel",
 					"text": "-gdb-set disassembly-flavor intel",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Enable assert break mode",
+					"text": "-enable-break-on-throw",
 					"ignoreFailures": true
 				}
 			]

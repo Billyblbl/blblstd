@@ -50,12 +50,14 @@ template<typename T> struct List {
 	void remove_ordered(usize index) {
 		for (auto i : u64xrange{ index, current - 1 })
 			allocated()[i] = allocated()[i + 1];
+		current--;
 	}
 
 	auto& insert_ordered(usize index, const T& element) {
 		assert(current < capacity.size());
-		if (index < current) for (auto i : u64xrange{ index, current - 1 })
-			allocated()[i + 1] = allocated()[i];
+		if (index < current) for (auto i : u64xrange{ 0, current - index })
+			allocated()[current - i] = allocated()[current - i - 1];
+		current++;
 		return allocated()[index] = element;
 	}
 
