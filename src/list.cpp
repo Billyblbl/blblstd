@@ -95,7 +95,7 @@ template<typename T> struct List {
 		} else return false;
 	}
 
-	auto& push_growing(Alloc& alloc, T&& element) {
+	auto& push_growing(Alloc& alloc, const T& element) {
 		grow(alloc);
 		return push(element);
 	}
@@ -106,7 +106,7 @@ template<typename T> struct List {
 		return tmp;
 	}
 
-	auto& swap_in_growing(Alloc& alloc, usize index, T&& element) {
+	auto& swap_in_growing(Alloc& alloc, usize index, const T& element) {
 		grow(alloc);
 		return swap_in(index, element);
 	}
