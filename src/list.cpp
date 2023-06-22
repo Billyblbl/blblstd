@@ -81,21 +81,25 @@ template<typename T> struct List {
 		return capacity.subspan(0, current);
 	}
 
-	bool grow(Alloc& alloc) {
+	bool grow(Alloc alloc) {
 		if (current >= capacity.size()) {
 			capacity = realloc_array(alloc, capacity, max(1, capacity.size()) * 2);
 			return true;
 		} else return false;
 	}
 
-	bool reduce(Alloc& alloc) {
+	bool reduce(Alloc alloc) {
 		if (current < capacity.size() / 2) {
 			capacity = realloc_array(alloc, capacity, capacity.size() / 2);
 			return true;
 		} else return false;
 	}
 
-	auto& push_growing(Alloc& alloc, const T& element) {
+	Array<T> shrink_to_content(Alloc alloc) {
+		return capacity = realloc_array(alloc, capacity, current);
+	}
+
+	auto& push_growing(Alloc alloc, const T& element) {
 		grow(alloc);
 		return push(element);
 	}
