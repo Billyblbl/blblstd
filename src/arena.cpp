@@ -9,7 +9,6 @@ using Arena = List<byte>;
 template<typename T> auto as_arena(Array<T> buffer) { return Arena { cast<byte>(buffer), 0 }; }
 Buffer stack_alloc(Arena& arena, Buffer buffer, usize size);
 void reset(Arena& arena);
-Buffer stack_alloc_strategy(any* ctx, Buffer buffer, usize size);
 Alloc as_stack(Arena& arena);
 Arena& self_contain(Arena&& arena);
 
@@ -40,7 +39,7 @@ Buffer stack_alloc(Arena& arena, Buffer buffer, usize size) {
 }
 
 void reset(Arena& arena) { arena.current = 0; }
-Buffer stack_alloc_strategy(any* ctx, Buffer buffer, usize size) { return stack_alloc(*(Arena*)ctx, buffer, size); }
+Buffer stack_alloc_strategy(any* ctx, Buffer buffer, usize size, u64) { return stack_alloc(*(Arena*)ctx, buffer, size); }
 Alloc as_stack(Arena& arena) { return Alloc { &arena, &stack_alloc_strategy }; }
 
 Arena& self_contain(Arena&& arena) {

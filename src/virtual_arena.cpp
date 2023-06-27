@@ -7,7 +7,7 @@
 Arena create_virtual_arena(usize size);
 void destroy_virtual_arena(Arena& arena);
 Arena& reset_virtual_arena(Arena& arena);
-Buffer virtual_arena_alloc(Arena& arena, Buffer buffer, usize size);
+Buffer virtual_arena_set_buffer(Arena& arena, Buffer buffer, usize size);
 Alloc as_v_alloc(Arena& arena);
 Alloc self_contained_virtual_arena_alloc(usize size);
 
@@ -28,7 +28,7 @@ Arena& reset_virtual_arena(Arena& arena) {
 	return arena;
 }
 
-Buffer virtual_arena_alloc(Arena& arena, Buffer buffer, usize size) {
+Buffer virtual_arena_set_buffer(Arena& arena, Buffer buffer, usize size) {
 	if (size == 0) {
 		virtual_decommit(buffer);
 		if (buffer.end() == arena.allocated().end())
@@ -59,7 +59,7 @@ Buffer virtual_arena_alloc(Arena& arena, Buffer buffer, usize size) {
 
 }
 
-Buffer virtual_arena_strategy(any* ctx, Buffer buffer, usize size) { return virtual_arena_alloc(*(Arena*)ctx, buffer, size); }
+Buffer virtual_arena_strategy(any* ctx, Buffer buffer, usize size, u64) { return virtual_arena_set_buffer(*(Arena*)ctx, buffer, size); }
 Alloc as_v_alloc(Arena& arena) { return { &arena, &virtual_arena_strategy }; }
 
 Alloc self_contained_virtual_arena_alloc(usize size) {
