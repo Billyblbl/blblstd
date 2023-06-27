@@ -16,6 +16,7 @@ SRC += src/utils.cpp
 SRC += src/virtual_arena.cpp
 SRC += src/virtual_memory.cpp
 SRC += src/module.cpp
+SRC += src/high_order.cpp
 
 INC = .
 INC += src
@@ -38,6 +39,12 @@ $(BIN): $(BUILD_DIR) $(SRC)
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+test: $(BIN)
+	@echo -e "Building $(COLOR)test$(NOCOLOR)"
+	@$(CXX) test.cpp $(BIN) $(CFLAGS) -o $(BUILD_DIR)/test.exe $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS)
+	@echo -e "Testing $(COLOR)blblstd$(NOCOLOR)"
+	$(BUILD_DIR)/test.exe
 
 re: clean bin
 

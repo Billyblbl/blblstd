@@ -16,7 +16,8 @@
 		"string": "cpp",
 		"unordered_map": "cpp",
 		"unordered_set": "cpp",
-		"vector": "cpp"
+		"vector": "cpp",
+		"concepts": "cpp"
 	},
 	"godot_tools.scene_file_config": "d:\\Projects\\astostd\\String.cpp"
 }
