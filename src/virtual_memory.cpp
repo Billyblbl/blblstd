@@ -25,13 +25,14 @@ Buffer virtual_alloc(usize size, bool commit) {
 }
 
 Buffer virtual_commit(Buffer buffer) {
+	if (buffer.size() == 0) return buffer;
 	auto ptr = VirtualAlloc(buffer.data(), buffer.size(), MEM_COMMIT, PAGE_READWRITE);
 	if (!ptr) {
 		auto err = GetLastError();
 		//TODO logs something with FormatMessage()
 		return Buffer{};
 	}
-	return Buffer((byte*)ptr, buffer.size());
+	return buffer;
 }
 
 void virtual_decommit(Buffer buffer) {
@@ -62,6 +63,7 @@ Buffer virtual_alloc(usize size, bool commit) {
 }
 
 Buffer virtual_commit(Buffer buffer) {
+	if (buffer.size() == 0) return buffer;
 	auto failure = mprotect(buffer.data(), buffer.size(), PROT_READ | PROT_WRITE);
 	if (failure) {
 		//TODO logs from errno

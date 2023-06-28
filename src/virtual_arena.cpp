@@ -12,6 +12,7 @@ Alloc as_v_alloc(Arena& arena);
 Alloc self_contained_virtual_arena_alloc(usize size);
 
 #ifdef BLBLSTD_IMPL
+// #if 1
 
 Arena create_virtual_arena(usize size) { return { virtual_alloc(size), 0 }; }
 
@@ -29,34 +30,10 @@ Arena& reset_virtual_arena(Arena& arena) {
 }
 
 Buffer virtual_arena_set_buffer(Arena& arena, Buffer buffer, usize size) {
-	if (size == 0) {
-		virtual_decommit(buffer);
-		if (buffer.end() == arena.allocated().end())
-			arena.pop_range(buffer.size());
-		return {};
-	}
-
-	if (buffer.end() == arena.allocated().end() && arena.capacity.end() >= buffer.begin() + size) { // can change buffer in place
-
-		if (buffer.size() < size) { // grow buffer
-			auto appended = virtual_commit(arena.allocate(size - buffer.size()));
-			return Buffer(buffer.begin(), appended.end());
-		} else if (buffer.size() > size) { // shrink buffer
-			virtual_decommit(arena.pop_range(buffer.size() - size));
-			return Buffer(buffer.begin(), size);
-		} else return buffer;
-
-	} else { // have to use new buffer
-
-		auto new_buffer = virtual_commit(arena.allocate(size));
-		if (buffer.data() != null) { // move if there's an old buffer
-			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), size));
-			virtual_decommit(buffer);
-		}
-		return new_buffer;
-
-	}
-
+	//? removed the decommits as it seems to decommit the whole memory page even when just giving a small range inside it
+	//? even decommiting multiple pages when if the range crosses them
+	//TODO research a bit more of how virtual allocation works on these points, both for windows & linux
+	return virtual_commit(arena_set_buffer(arena, buffer, size));
 }
 
 Buffer virtual_arena_strategy(any* ctx, Buffer buffer, usize size, u64) { return virtual_arena_set_buffer(*(Arena*)ctx, buffer, size); }

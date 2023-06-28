@@ -26,7 +26,7 @@ template<typename T> struct List {
 	auto allocate(usize count) {
 		auto start = current;
 		current += count;
-		return capacity.subspan(start, current);
+		return capacity.subspan(start, count);
 	}
 
 	auto pop_range(usize count) {
