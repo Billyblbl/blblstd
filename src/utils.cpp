@@ -43,13 +43,17 @@ using utf32 = std::u32string_view;
 
 using any = void;
 
-template<typename... T> using tuple = std::tuple<T...>;
-
 template<typename T> using Array = std::span<T>;
 template<typename T> using LiteralArray = std::initializer_list<T>;
 template<typename T, typename U> inline auto cast(Array<U> arr) {
 	return Array<T>((T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T));
 }
+
+template<typename... T> using tuple = std::tuple<T...>;
+template<typename S> S tuple_as(auto t) { return std::apply([](auto&&... args) -> S { return { args... };}, t); }
+template<typename T, typename S> concept tuple_equivalent = sizeof(T) == sizeof(S) && alignof(T) == alignof(S) && requires (const T & t) { { tuple_as<S>(t) } -> std::same_as<S>; };
+//! Broken
+// template<typename S, tuple_equivalent<S> T> auto tuple_array_as(Array<T> t) { return cast<S>(t); }
 
 template<typename T, u64... indices> auto to_tuple_helper(std::integer_sequence<u64, indices...> int_seq, Array<T> arr) {
 	return tuple(arr[indices]...);

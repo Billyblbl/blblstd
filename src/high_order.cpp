@@ -26,7 +26,6 @@ template<typename T> auto map(Alloc allocator, Array<T> collection, auto mapper)
 	return list.allocated();
 }
 
-//! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
 template<typename T> i64 best_fit_search(Array<T> collection, auto score) {
 	if (collection.size() == 0)
 		return -1;
@@ -42,14 +41,13 @@ template<typename T> i64 best_fit_search(Array<T> collection, auto score) {
 	return index;
 }
 
-//TODO test
 //! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
+//! don't use this with big collections or will probably explode stack with nodes_buff size
 template<typename T> Array<T> sort(Alloc allocator, Array<T> collection, auto comp) {
 	struct IndexNode {
 		u64 index;
 		IndexNode* next;
 	} nodes_buff[collection.size()];
-	//! don't use this with big collections or will explode stack
 	auto nodes = List{ carray(nodes_buff, collection.size()), 0 };
 	LinkList<IndexNode> ll;
 
@@ -73,7 +71,6 @@ template<typename T> Array<T> sort(Alloc allocator, Array<T> collection, auto co
 	return sorted.allocated();
 }
 
-//! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
 template<typename R, typename T> R fold(const R& init, Array<T> collection, auto acc) {
 	R result = init;
 	for (auto&& e : collection)
