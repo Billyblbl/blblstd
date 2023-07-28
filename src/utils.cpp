@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <tuple>
 #include <stdio.h>
+#include <strings.h>
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -86,6 +87,9 @@ template<typename T> inline T bit(auto index) { return (T)1 << index; }
 template<typename T> inline T mask(auto... index) { return (bit<T>(index) | ...); }
 inline bool has_all(auto flags, auto mask) { return (flags & mask) == mask; }
 inline bool has_one(auto flags, auto mask) { return flags & mask; }
+
+inline u32 ffs(auto flag) { return __builtin_ffsll(flag); }
+inline string flag_name(Array<string> names, auto flag) { return names[ffs(flag)]; }
 
 constexpr auto null = nullptr;
 

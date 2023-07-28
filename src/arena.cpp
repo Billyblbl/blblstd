@@ -14,6 +14,7 @@ Arena& self_contain(Arena&& arena);
 
 #ifdef BLBLSTD_IMPL
 // #if 1
+#include <virtual_memory.cpp>
 
 Buffer arena_set_buffer(Arena& arena, Buffer buffer, usize size) {
 	if (size == 0) {
@@ -29,8 +30,10 @@ Buffer arena_set_buffer(Arena& arena, Buffer buffer, usize size) {
 			arena.pop_range(buffer.size() - size);
 		}
 		return buffer.subspan(0, size);
+	} else if (size < arena.capacity) { // just return the same range
+		return buffer;
 	} else { // have to use new buffer -> easily pretty bad if moving buffers with this allocation strategy
-		auto new_buffer = arena.allocate(size);
+		auto new_buffer = virtual_commit(arena.allocate(size));
 		if (new_buffer.data() != null && buffer.data() != null) // move if there's an old buffer
 			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), size));
 		return new_buffer;
