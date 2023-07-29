@@ -30,7 +30,7 @@ Buffer arena_set_buffer(Arena& arena, Buffer buffer, usize size) {
 			arena.pop_range(buffer.size() - size);
 		}
 		return buffer.subspan(0, size);
-	} else if (size < arena.capacity) { // just return the same range
+	} else if (size < buffer.size()) { // just return the same range
 		return buffer;
 	} else { // have to use new buffer -> easily pretty bad if moving buffers with this allocation strategy
 		auto new_buffer = virtual_commit(arena.allocate(size));
