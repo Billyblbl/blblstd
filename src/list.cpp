@@ -29,6 +29,26 @@ template<typename T> struct List {
 		return capacity.subspan(start, count);
 	}
 
+	auto allocate_growing(Alloc allocator, usize count) {
+		grow(allocator, count);
+		return allocate(count);
+	}
+
+	auto push_range(Array<const T> elements) {
+		assert(current + elements.size() < capacity.size());
+		auto dest = allocate(elements.size());
+		for (auto i : u64xrange{ 0, elements.size() })
+			dest[i] = elements[i];
+		return dest;
+	}
+
+	auto push_range_growing(Alloc allocator, Array<const T> elements) {
+		auto dest = allocate_growing(allocator, elements.size());
+		for (auto i : u64xrange{ 0, elements.size() })
+			dest[i] = elements[i];
+		return dest;
+	}
+
 	auto pop_range(usize count) {
 		current -= count;
 		return capacity.subspan(current, count);
@@ -81,9 +101,10 @@ template<typename T> struct List {
 		return capacity.subspan(0, current);
 	}
 
-	bool grow(Alloc alloc) {
-		if (current >= capacity.size()) {
-			capacity = realloc_array(alloc, capacity, max(1, capacity.size()) * 2);
+	bool grow(Alloc alloc, u32 intended_pushes = 1) {
+		if (current + intended_pushes > capacity.size()) {
+			capacity = realloc_array(alloc, capacity, max(max(1, capacity.size()) * 2, max(1, capacity.size()) + intended_pushes));
+			//TODO error handling upon realloc failure
 			return true;
 		} else return false;
 	}
