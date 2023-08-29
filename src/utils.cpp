@@ -200,11 +200,25 @@ template<typename T, typename P> i64 linear_search(Array<T> arr, P predicate, i6
 	return -1;
 }
 
+template<typename T, typename P> i64 linear_search_idx(Array<T> arr, P predicate, i64 start = 0) {
+	for (auto i : iter_inc(array_indices(arr))) {
+		auto index = (i + start) % arr.size();
+		if (predicate(arr[index], index))
+			return index;
+	}
+	return -1;
+}
+
 template<typename Callable> struct DeferedCall {
 	Callable call;
 	DeferedCall(Callable&& _call) : call(std::move(_call)) {}
 	~DeferedCall() { call(); }
 };
+
+template<typename T> Array<T> copy(Array<T> source, Array<T> dest) {
+	memcpy(dest.data(), source.data(), min(source.size_bytes(), dest.size_bytes()));
+	return dest;
+}
 
 #define deferVarName(line) DeferedCall defered_call_##line = [&]()
 #define deferVarNameHelper(line) deferVarName(line)

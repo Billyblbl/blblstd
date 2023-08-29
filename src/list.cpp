@@ -18,12 +18,13 @@ template<typename T> struct List {
 		return capacity[current++] = element;
 	}
 
-	auto pop() {
+	T pop() {
 		assert(current > 0);
 		return std::move(capacity[--current]);
 	}
 
 	auto allocate(usize count) {
+		assert(current + count <= capacity.size());
 		auto start = current;
 		current += count;
 		return capacity.subspan(start, count);
@@ -35,12 +36,13 @@ template<typename T> struct List {
 	}
 
 	auto push_range(Array<const T> elements) {
-		assert(current + elements.size() < capacity.size());
 		auto dest = allocate(elements.size());
 		for (auto i : u64xrange{ 0, elements.size() })
 			dest[i] = elements[i];
 		return dest;
 	}
+
+	template<typename... Ts> auto push_multiple(const tuple<Ts...>& tp) { return push_range(cast<T>(carray(&tp, 1))); }
 
 	auto push_range_growing(Alloc allocator, Array<const T> elements) {
 		auto dest = allocate_growing(allocator, elements.size());
@@ -48,6 +50,8 @@ template<typename T> struct List {
 			dest[i] = elements[i];
 		return dest;
 	}
+
+	template<typename... Ts> auto push_multiple_growing(Alloc allocator, const tuple<Ts...>& tp) { return push_range_growing(allocator, cast<T>(carray(&tp, 1))); }
 
 	auto pop_range(usize count) {
 		current -= count;
@@ -101,6 +105,10 @@ template<typename T> struct List {
 		return capacity.subspan(0, current);
 	}
 
+	auto leftover() const {
+		return capacity.subspan(current);
+	}
+
 	bool grow(Alloc alloc, u32 intended_pushes = 1) {
 		if (current + intended_pushes > capacity.size()) {
 			capacity = realloc_array(alloc, capacity, max(max(1, capacity.size()) * 2, max(1, capacity.size()) + intended_pushes));
@@ -117,7 +125,7 @@ template<typename T> struct List {
 	}
 
 	Array<T> shrink_to_content(Alloc alloc) {
-		return capacity = realloc_array(alloc, capacity, current);
+		return (capacity = realloc_array(alloc, capacity, current)).subspan(0, current);
 	}
 
 	auto& push_growing(Alloc alloc, const T& element) {
