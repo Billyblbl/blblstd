@@ -11,6 +11,12 @@ template<typename T> struct LinkList {
 
 #pragma region Single link
 
+template<typename T, T* T::* l> u64 count(T* list) {
+	u64 i = 0;
+	for (auto _ : traverse_by<l>(list)) i++;
+	return i;
+}
+
 template<typename T, T* T::* l> struct ListIterator {
 	T* current;
 	ListIterator operator++() { return { current = (current->*l) }; }
@@ -81,6 +87,12 @@ template<typename T> struct DoubleLink {
 	T* previous = nullptr;
 	T* next = nullptr;
 };
+
+template<typename T, DoubleLink<T> T::* l> u64 count(T* list) {
+	u64 i = 0;
+	for (auto _ : traverse_by<l>(list)) i++;
+	return i;
+}
 
 template<typename T, DoubleLink<T> T::* l> struct DoubleListIterator {
 	T* current;
