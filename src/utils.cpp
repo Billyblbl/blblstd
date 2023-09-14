@@ -70,9 +70,9 @@ template<typename T> i64 linear_search(Array<T> arr, const T& obj, i64 start = 0
 }
 
 template<typename T, usize S> inline consteval usize array_size(const T(&)[S]) { return S; }
-template<typename T, usize S> inline auto larray(T(&arr)[S]) { return Array<T>(arr, S); }
-template<typename T> inline auto carray(T* arr, usize s) { return Array<T>(arr, s); }
-template<typename T> inline auto larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
+template<typename T, usize S> inline constexpr auto larray(T(&arr)[S]) { return Array<T>(arr, S); }
+template<typename T> inline auto constexpr carray(T* arr, usize s) { return Array<T>(arr, s); }
+template<typename T> inline auto constexpr larray(const LiteralArray<T>& arr) { return carray(arr.begin(), arr.size()); }
 template<usize S> inline auto lstr(const char(&arr)[S]) { return string(&arr[0], S); }
 template<usize S> inline auto lstr(const wchar_t(&arr)[S]) { return wstring(&arr[0], S); }
 template<usize S> inline auto lutf(const char8_t(&arr)[S]) { return utf8(arr, S); }
