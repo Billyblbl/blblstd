@@ -5,11 +5,25 @@
 #include <memory.cpp>
 #include <list.cpp>
 #include <link_list.cpp>
+#include <concepts>
 
-//TODO concepts for function parameter requirements (predicate, mapper, score, comp)
+template<typename S> struct signature {
+	using r = void;
+	using t = tuple<void>;
+};
+
+template<typename R, typename... A> struct signature<R(A...)> {
+	using r = R;
+	using t = tuple<A...>;
+};
+
+template<typename F, typename T, typename R> concept functor_t = requires(F && f, T && args) { { std::apply(f, args) } -> std::same_as<R>; };
+template<typename F, typename S> concept functor = functor_t<F, typename signature<S>::t, typename signature<S>::r>;
+
+//TODO concepts for function parameter requirements mapper, score, comp
 
 //! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
-template<typename T> Array<T> filter(Alloc allocator, Array<T> collection, auto predicate) {
+template<typename T> Array<T> filter(Alloc allocator, Array<T> collection, functor<bool(const T&)> auto predicate) {
 	auto list = List{ alloc_array<T>(allocator, collection.size()), 0 };
 	for (auto&& i : collection) if (predicate(i))
 		list.push(i);
@@ -40,6 +54,9 @@ template<typename T> i64 best_fit_search(Array<T> collection, auto score) {
 	}
 	return index;
 }
+
+template<typename T> T fit_highest(const T& t) { return t;}
+template<typename T> T fit_lowest(const T& t) { return -t;}
 
 //! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
 //! don't use this with big collections or will probably explode stack with nodes_buff size
