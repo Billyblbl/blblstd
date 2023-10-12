@@ -16,21 +16,52 @@ struct Alloc {
 };
 
 template<typename T> inline Array<T> alloc_array(Alloc allocator, usize count, u64 flags = 0) {
-	return cast<T>(allocator.alloc(sizeof(T) * count));
+	return cast<T>(allocator.alloc(sizeof(T) * count, flags));
 }
 
 template<typename T> inline Array<T> realloc_array(Alloc allocator, Array<T> arr, usize count, u64 flags = 0) {
-	return cast<T>(allocator.realloc(cast<byte>(arr), sizeof(T) * count));
+	return cast<T>(allocator.realloc(cast<byte>(arr), sizeof(T) * count, flags));
 }
 
 template<typename T> inline void dealloc_array(Alloc allocator, Array<T> arr, u64 flags = 0) {
-	return allocator.dealloc(cast<byte>(arr));
+	return allocator.dealloc(cast<byte>(arr), flags);
 }
 
 template<typename T> inline Array<T> duplicate_array(Alloc allocator, Array<T> arr, u64 flags = 0) {
-	auto other = alloc_array<T>(allocator, arr.size());
+	auto other = alloc_array<T>(allocator, arr.size(), flags);
 	memcpy(other.data(), arr.data(), arr.size_bytes());
 	return other;
+}
+
+template<typename T> inline Array<T> duplicate_array(Alloc allocator, Array<const T> arr, u64 flags = 0) {
+	auto other = alloc_array<T>(allocator, arr.size(), flags);
+	memcpy(other.data(), arr.data(), arr.size_bytes());
+	return other;
+}
+
+template<typename T> inline Array<T> push_array(Alloc allocator, LiteralArray<T> arr, u64 flags = 0) { return duplicate_array(allocator, larray(arr), flags); }
+
+inline string push_string(Alloc allocator, string str, u64 flags = 0) {
+	auto other = alloc_array<char>(allocator, str.size() + 1, flags);
+	memcpy(other.data(), str.data(), str.size());
+	other[str.size()] = 0;
+	return other.data();
+}
+
+template<typename T> inline T* alloc(Alloc allocator, u64 flags = 0) {
+	return &alloc_array<T>(allocator, 1, flags)[0];
+}
+
+template<typename T> inline void dealloc(Alloc allocator, T& t, u64 flags = 0) {
+	dealloc_array(allocator, carray(&t, 1), flags);
+}
+
+template<typename T> inline T* realloc(Alloc allocator, T& t, u64 flags = 0) {
+	return &realloc_array(allocator, carray(&t, 1), flags)[0];
+}
+
+template<typename T> inline T* duplicate(Alloc allocator, T& t, u64 flags = 0) {
+	return &duplicate_array(allocator, carray(&t, 1), flags)[0];
 }
 
 extern Alloc std_allocator;

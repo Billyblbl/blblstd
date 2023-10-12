@@ -13,7 +13,7 @@ template<typename T> struct LinkList {
 
 template<typename T, T* T::* l> u64 count(T* list) {
 	u64 i = 0;
-	for (auto _ : traverse_by<l>(list)) i++;
+	for (auto _ : traverse_by<T, l>(list)) i++;
 	return i;
 }
 
