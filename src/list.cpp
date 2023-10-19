@@ -29,7 +29,7 @@ template<typename T> struct List {
 	}
 
 	auto push(Array<const T> elements) {
-		auto dest = push(elements.size());
+		auto dest = push_count(elements.size());
 		for (auto i : u64xrange{ 0, elements.size() })
 			dest[i] = elements[i];
 		return dest;

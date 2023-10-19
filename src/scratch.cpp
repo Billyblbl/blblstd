@@ -6,7 +6,7 @@
 tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collisions = {});
 tuple<Arena&, u64> scratch_push_scope(u64 size, LiteralArray<const Arena*> collision);
 tuple<Arena&, u64> scratch_push_scope(u64 size, const Arena* const collision);
-Buffer scratch_pop_scope(Arena& arena, u64 scope);
+Arena& scratch_pop_scope(Arena& arena, u64 scope);
 
 #ifdef BLBLSTD_IMPL
 
@@ -45,7 +45,7 @@ tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collis
 
 tuple<Arena&, u64> scratch_push_scope(u64 size, LiteralArray<const Arena*> collision) { return scratch_push_scope(size, larray(collision)); }
 tuple<Arena&, u64> scratch_push_scope(u64 size, const Arena* const collision) { return scratch_push_scope(size, carray(&collision, 1)); }
-Buffer scratch_pop_scope(Arena& arena, u64 scope) { return arena.pop_to(scope); }
+Arena& scratch_pop_scope(Arena& arena, u64 scope) { return (arena.pop_to(scope), arena); }
 
 #endif
 

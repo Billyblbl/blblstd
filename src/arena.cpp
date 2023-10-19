@@ -15,6 +15,7 @@ struct Arena {
 		ALLOW_FAILURE = 1 << 2,
 		ALLOW_MOVE_MORPH = 1 << 3,
 		ALLOW_CHAIN_GROWTH = 1 << 4,
+		FULL_COMMIT = 1 << 5,
 		NONE = u64(1) << 63,
 	};
 
@@ -25,7 +26,13 @@ struct Arena {
 		return new_arena;
 	}
 
-	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) { return from_buffer(virtual_reserve(size), flags); }
+	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) { return from_buffer(virtual_reserve(size, flags & FULL_COMMIT), flags); }
+
+	Arena& commit_all() {
+		virtual_commit(bytes);
+		flags |= FULL_COMMIT;
+		return *this;
+	}
 
 	void vmem_release() {
 		if (flags & ALLOW_CHAIN_GROWTH) next->vmem_release();
@@ -90,9 +97,13 @@ struct Arena {
 	template<typename T> inline Array<T> push_array(usize count) { return cast<T>(push(count * sizeof(T))); }
 
 	template<typename T> inline Array<T> push_array(Array<const T> arr) {
-		auto other = push_array(arr.size());
+		auto other = push_array<T>(arr.size());
 		memcpy(other.data(), arr.data(), arr.size_bytes());
 		return other;
+	}
+
+	template<typename T> inline Array<T> push_array(Array<T> arr) {
+		return push_array(cast<const T>(arr));
 	}
 
 	template<typename T> inline Array<T> push_array(LiteralArray<T> arr) { return push_array(larray(arr)); }
