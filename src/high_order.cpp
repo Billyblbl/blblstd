@@ -2,10 +2,10 @@
 # define GHIGH_ORDER
 
 #include <utils.cpp>
-#include <memory.cpp>
 #include <list.cpp>
 #include <link_list.cpp>
 #include <concepts>
+#include <arena.cpp>
 
 template<typename S> struct signature {
 	using r = void;
@@ -22,22 +22,19 @@ template<typename F, typename S> concept functor = functor_t<F, typename signatu
 
 //TODO concepts for function parameter requirements mapper, score, comp
 
-//! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
-template<typename T> Array<T> filter(Alloc allocator, Array<T> collection, functor<bool(const T&)> auto predicate) {
-	auto list = List{ alloc_array<T>(allocator, collection.size()), 0 };
+template<typename T> Array<T> filter(Arena& arena, Array<T> collection, functor<bool(const T&)> auto predicate) {
+	auto list = List{ arena.push_array<T>(collection.size()), 0 };
 	for (auto&& i : collection) if (predicate(i))
 		list.push(i);
-	list.shrink_to_content(allocator);
-	return list.allocated();
+	return list.shrink_to_content(arena);
 }
 
-//! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
-template<typename T> auto map(Alloc allocator, Array<T> collection, auto mapper) {
+template<typename T> auto map(Arena& arena, Array<T> collection, auto mapper) {
 	using R = decltype(mapper(collection[0]));
-	auto list = List{ alloc_array<R>(allocator, collection.size()), 0 };
+	auto list = List{ arena.push_array<R>(collection.size()), 0 };
 	for (auto&& i : collection)
 		list.push(mapper(i));
-	return list.allocated();
+	return list.used();
 }
 
 template<typename T> i64 best_fit_search(Array<T> collection, auto score) {
@@ -58,9 +55,8 @@ template<typename T> i64 best_fit_search(Array<T> collection, auto score) {
 template<typename T> T fit_highest(const T& t) { return t;}
 template<typename T> T fit_lowest(const T& t) { return -t;}
 
-//! Intentionally leaks, meant to be used with the intent of clearing all memory after multiple operations
 //! don't use this with big collections or will probably explode stack with nodes_buff size
-template<typename T> Array<T> sort(Alloc allocator, Array<T> collection, auto comp) {
+template<typename T> Array<T> sort(Arena& arena, Array<T> collection, auto comp) {
 	struct IndexNode {
 		u64 index;
 		IndexNode* next;
@@ -70,9 +66,9 @@ template<typename T> Array<T> sort(Alloc allocator, Array<T> collection, auto co
 
 	for (auto i : u64xrange{ 0, collection.size() }) {
 		IndexNode* closest = null;
-		auto best = linear_search(nodes.allocated(), [&](const IndexNode& n) { return comp(collection[n.index], collection[i]) < 0 && (n.next == null || comp(collection[n.next->index], collection[i]) >= 0);});
+		auto best = linear_search(nodes.used(), [&](const IndexNode& n) { return comp(collection[n.index], collection[i]) < 0 && (n.next == null || comp(collection[n.next->index], collection[i]) >= 0);});
 		if (best >= 0)
-			closest = &nodes.allocated()[best];
+			closest = &nodes[best];
 		auto& new_node = nodes.push({ i, nullptr });
 		if (closest == null)
 			list_preppend(ll, &new_node, &IndexNode::next);
@@ -81,11 +77,11 @@ template<typename T> Array<T> sort(Alloc allocator, Array<T> collection, auto co
 		}
 	}
 
-	auto sorted = List{ alloc_array<T>(allocator, collection.size()), 0 };
+	auto sorted = List{ arena.push_array<T>(collection.size()), 0 };
 	for (auto&& node : traverse_by<IndexNode, &IndexNode::next>(ll.first))//* using first because insert_after can't move the last in the list, so if we want to iterate on the whole thing we need to ignore the current end of ll
 		sorted.push(collection[node.index]);
 
-	return sorted.allocated();
+	return sorted.used();
 }
 
 template<typename R, typename T> R fold(const R& init, Array<T> collection, auto acc) {

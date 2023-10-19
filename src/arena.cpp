@@ -1,53 +1,118 @@
 #ifndef GARENA
 # define GARENA
 
-#include <memory.cpp>
-#include <list.cpp>
-
-using Arena = List<byte>;
-
-template<typename T> auto as_arena(Array<T> buffer) { return Arena { cast<byte>(buffer), 0 }; }
-Buffer arena_set_buffer(Arena& arena, Buffer buffer, usize size);
-void reset(Arena& arena);
-Alloc as_stack(Arena& arena);
-Arena& self_contain(Arena&& arena);
-
-#ifdef BLBLSTD_IMPL
-// #if 1
 #include <virtual_memory.cpp>
 
-Buffer arena_set_buffer(Arena& arena, Buffer buffer, usize size) {
-	if (size == 0) {
-		if (buffer.end() == arena.allocated().end())
-			arena.pop_range(buffer.size());
-		return {};
+struct Arena {
+	Buffer bytes = {};
+	Arena* next = null;
+	u64 current = 0;
+	u64 flags = 0;
+
+	enum : u64 {
+		COMMIT_ON_PUSH = 1 << 0,
+		DECOMMIT_ON_EMPTY = 1 << 1,
+		ALLOW_FAILURE = 1 << 2,
+		ALLOW_MOVE_MORPH = 1 << 3,
+		ALLOW_CHAIN_GROWTH = 1 << 4,
+		NONE = u64(1) << 63,
+	};
+
+	static inline Arena from_buffer(Buffer buffer, u64 flags = 0) {
+		Arena new_arena;
+		new_arena.bytes = buffer;
+		new_arena.flags = flags & ~ALLOW_CHAIN_GROWTH;//? chain growth not allowed as implementation is incomplete
+		return new_arena;
 	}
 
-	if (buffer.end() == arena.allocated().end() && arena.capacity.end() >= buffer.begin() + size) { // can change buffer in place
-		if (buffer.size() < size) { // grow buffer
-			arena.allocate(size - buffer.size());
-		} else if (buffer.size() > size) { // shrink buffer
-			arena.pop_range(buffer.size() - size);
+	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) { return from_buffer(virtual_reserve(size), flags); }
+
+	void vmem_release() {
+		if (flags & ALLOW_CHAIN_GROWTH) next->vmem_release();
+		virtual_release(bytes);
+		*this = {};
+	}
+
+	inline Buffer used() const { return bytes.subspan(0, current); }
+	inline Buffer free() const { return bytes.subspan(current); }
+
+	inline Buffer push(u64 size) {
+		if ((flags & ALLOW_CHAIN_GROWTH) && size > free().size())
+			next = &Arena::from_vmem(bytes.size(), flags).self_contain();
+
+		if (current <= bytes.size() - size) {
+			auto start = current;
+			current += size;
+			if ((flags & COMMIT_ON_PUSH))
+				virtual_commit(used().subspan(start));
+			return used().subspan(start);
+		} else {
+			assert((fprintf(stderr, "Failed allocation : available=%lu, requested=%lu\n", free().size(), size), flags & ALLOW_FAILURE));
+			return {};
 		}
-		return buffer.subspan(0, size);
-	} else if (size < buffer.size()) { // just return the same range
-		return buffer;
-	} else { // have to use new buffer -> easily pretty bad if moving buffers with this allocation strategy
-		auto new_buffer = virtual_commit(arena.allocate(size));
-		if (new_buffer.data() != null && buffer.data() != null) // move if there's an old buffer
-			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), size));
-		return new_buffer;
 	}
-}
 
-void reset(Arena& arena) { arena.current = 0; }
-Buffer stack_alloc_strategy(any* ctx, Buffer buffer, usize size, u64) { return arena_set_buffer(*(Arena*)ctx, buffer, size); }
-Alloc as_stack(Arena& arena) { return Alloc { &arena, &stack_alloc_strategy }; }
+	inline Buffer pop(u64 size, u64 flags_override = 0) {
+		auto start = current;
+		current -= size;
+		auto used_flags = flags_override ? flags_override : flags;
+		//TODO handle chained arenas
+		if (current == 0 && (used_flags & DECOMMIT_ON_EMPTY))
+			virtual_decommit(bytes);
+		return free().subspan(0, size);
+	}
 
-Arena& self_contain(Arena&& arena) {
-	return cast<Arena>(arena.allocate(sizeof(Arena)))[0] = std::move(arena);
-}
+	inline Buffer pop_to(u64 scope) { return pop(current - scope); }
 
-#endif
+	inline Arena& reset() {
+		pop(current);//TODO handle chained arenas
+		return *this;
+	}
+
+	inline Buffer morph(Buffer buffer, u64 size) {
+		if (buffer.size() == size) return buffer;
+		if (buffer.end() == used().end()) {
+			pop(buffer.size(), NONE);
+			auto new_buffer = push(size);
+			return new_buffer.data() ? new_buffer : push(buffer.size());
+		} else if (size < buffer.size()) {
+			return buffer.subspan(0, size);
+		} else if (flags & ALLOW_MOVE_MORPH) {
+			auto new_buffer = push(size);
+			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), new_buffer.size()));
+			return new_buffer;
+		} else {
+			assert((fprintf(stderr, "Failed morph : initial=%lu, available=%lu, requested=%lu\n", buffer.size(), free().size(), size), flags & ALLOW_FAILURE));
+			return buffer;
+		}
+	}
+
+	template<typename T> inline Array<T> push_array(usize count) { return cast<T>(push(count * sizeof(T))); }
+
+	template<typename T> inline Array<T> push_array(Array<const T> arr) {
+		auto other = push_array(arr.size());
+		memcpy(other.data(), arr.data(), arr.size_bytes());
+		return other;
+	}
+
+	template<typename T> inline Array<T> push_array(LiteralArray<T> arr) { return push_array(larray(arr)); }
+
+	inline string push_string(string str) {
+		auto arr = push_array<char>(str.size() + 1);
+		memcpy(arr.data(), str.data(), str.size());
+		arr[str.size()] = 0;
+		return arr.data();
+	}
+
+	template<typename T> inline T& push() { return cast<T>(push(sizeof(T)))[0]; }
+	template<typename T> inline T& push(const T& obj) { return cast<T>(push(sizeof(T)))[0] = obj; }
+
+	template<typename T> inline Array<T> morph_array(Array<T> arr, u64 count) {
+		return cast<T>(morph(cast<byte>(arr), count * sizeof(T)));
+	}
+
+	inline Arena& self_contain() { return push<Arena>() = *this; }
+
+};
 
 #endif
