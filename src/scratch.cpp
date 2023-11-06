@@ -26,7 +26,9 @@ tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collis
 	constexpr u8 MAX_SCRATCHES = 128;
 	static thread_local Arena buffer[MAX_SCRATCHES];
 	static thread_local List<Arena> scratches = { larray(buffer), 0 };
-	auto i = linear_search(scratches.used(), [&](Arena& s) { return (s.current == 0 || s.free().size() >= size) && linear_search(collisions, [&](const Arena* const c) {return c == &s;}) < 0; });
+
+	auto collide = [&](const Arena& s) { return linear_search(collisions, [&](const Arena* const c) { return c == &s; }) >= 0; };
+	auto i = linear_search(scratches.used(), [&](Arena& s) { return (s.current == 0 || s.free().size() >= size) && !collide(s); });
 	Arena* scratch = null;
 	size = round_up_bit(size);
 
