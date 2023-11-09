@@ -17,6 +17,12 @@ template<typename T, T* T::* l> u64 count(T* list) {
 	return i;
 }
 
+template<typename T, T* T::* l> u64 count(T* list, auto filter) {
+	u64 i = 0;
+	for (auto e : traverse_by<T, l>(list)) if (filter(e)) i++;
+	return i;
+}
+
 template<typename T, T* T::* l> struct ListIterator {
 	T* current;
 	ListIterator operator++() { return { current = (current->*l) }; }
