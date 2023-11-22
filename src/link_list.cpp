@@ -11,6 +11,11 @@ template<typename T> struct LinkList {
 
 #pragma region Single link
 
+template<typename T> struct LinkedNode {
+	T content;
+	LinkedNode<T>* next;
+};
+
 template<typename T, T* T::* l> u64 count(T* list) {
 	u64 i = 0;
 	for (auto _ : traverse_by<T, l>(list)) i++;
@@ -94,6 +99,11 @@ template<typename T> struct DoubleLink {
 	T* next = nullptr;
 };
 
+template<typename T> struct DoubleLinkedNode {
+	T content;
+	DoubleLink<DoubleLinkedNode<T>> siblings;
+};
+
 template<typename T, DoubleLink<T> T::* l> u64 count(T* list) {
 	u64 i = 0;
 	for (auto _ : traverse_by<l>(list)) i++;
@@ -172,5 +182,32 @@ template<typename T, DoubleLink<T> T::* l> auto link_range_excl(T* begin, T* end
 }
 
 #pragma endregion Double link
+
+template<typename T> struct Chunk {
+	Chunk<T>* next;
+	u32 size;
+	u32 fill;
+	T content_buff[];
+	Array<T> content() const { return carray(content_buff, size); };
+	Array<T> used() const { return content().subspan(0, fill); };
+	Array<T> free() const { return content().subspan(fill); };
+};
+
+#include <arena.cpp>
+
+template<typename T> Chunk<T>& push_chunk(Arena& arena, u32 size) {
+	auto& chunk = cast<Chunk<T>>(arena.push(sizeof(Chunk<T>) + sizeof(T) * size))[0];
+	chunk.size = size;
+	chunk.next = null;
+	chunk.fill = 0;
+	return chunk;
+}
+
+template<typename T> Chunk<T>& push_chunk(Arena& arena, Array<T> content) {
+	auto& chunk = push_chunk(arena, content.size());
+	memcpy(chunk.content().data(), content.data(), content.size());
+	chunk.fill = content.size();
+	return chunk;
+}
 
 #endif
