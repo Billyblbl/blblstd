@@ -26,6 +26,9 @@ struct Arena {
 		return new_arena;
 	}
 
+	template<typename T> static inline Arena from_array(Array<T> buffer, u64 flags = 0) { return from_buffer(cast<byte>(buffer), flags); }
+	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_buffer(larray(arr), flags); }
+
 	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) { return from_buffer(virtual_reserve(size, flags & FULL_COMMIT), flags); }
 
 	Arena& commit_all() {
