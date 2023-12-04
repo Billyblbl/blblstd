@@ -24,7 +24,7 @@ template<typename T, T* T::* l> u64 count(T* list) {
 
 template<typename T, T* T::* l> u64 count(T* list, auto filter) {
 	u64 i = 0;
-	for (auto e : traverse_by<T, l>(list)) if (filter(e)) i++;
+	for (auto& e : traverse_by<T, l>(list)) if (filter(e)) i++;
 	return i;
 }
 
