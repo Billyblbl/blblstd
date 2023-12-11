@@ -37,6 +37,11 @@ struct Arena {
 		return *this;
 	}
 
+	static Buffer zero_buff(Buffer buff) {
+		memset(buff.data(), 0, buff.size_bytes());
+		return buff;
+	}
+
 	void vmem_release() {
 		if (flags & ALLOW_CHAIN_GROWTH) next->vmem_release();
 		virtual_release(bytes);
@@ -46,16 +51,18 @@ struct Arena {
 	inline Buffer used() const { return bytes.subspan(0, current); }
 	inline Buffer free() const { return bytes.subspan(current); }
 
-	inline Buffer push(u64 size) {
+	inline Buffer push(u64 size, bool zero_mem = false) {
 		if ((flags & ALLOW_CHAIN_GROWTH) && size > free().size())
 			next = &Arena::from_vmem(bytes.size(), flags).self_contain();
-
 		if (current <= bytes.size() - size) {
 			auto start = current;
 			current += size;
 			if ((flags & COMMIT_ON_PUSH))
 				virtual_commit(used().subspan(start));
-			return used().subspan(start);
+			if (zero_mem)
+				return zero_buff(used().subspan(start));
+			else
+				return used().subspan(start);
 		} else {
 			assert((fprintf(stderr, "Failed allocation : available=%lu, requested=%lu\n", free().size(), size), flags & ALLOW_FAILURE));
 			return {};
@@ -97,7 +104,7 @@ struct Arena {
 		}
 	}
 
-	template<typename T> inline Array<T> push_array(usize count) { return cast<T>(push(count * sizeof(T))); }
+	template<typename T> inline Array<T> push_array(usize count, bool zero_mem = false) { return cast<T>(push(count * sizeof(T), zero_mem)); }
 
 	template<typename T> inline Array<T> push_array(Array<const T> arr) {
 		auto other = push_array<T>(arr.size());
@@ -118,14 +125,14 @@ struct Arena {
 		return arr.data();
 	}
 
-	template<typename T> inline T& push() { return cast<T>(push(sizeof(T)))[0]; }
+	template<typename T> inline T& push(bool zero_mem = false) { return cast<T>(push(sizeof(T), zero_mem))[0]; }
 	template<typename T> inline T& push(const T& obj) { return cast<T>(push(sizeof(T)))[0] = obj; }
 
 	template<typename T> inline Array<T> morph_array(Array<T> arr, u64 count) {
 		return cast<T>(morph(cast<byte>(arr), count * sizeof(T)));
 	}
 
-	inline Arena& self_contain() { return push<Arena>() = *this; }
+	inline Arena& self_contain() { return push(*this); }
 
 };
 
