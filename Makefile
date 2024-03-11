@@ -22,7 +22,7 @@ INC = .
 INC += src
 
 LIB = .
-CFLAGS += -std=c++20
+CFLAGS += -std=c++23
 # CFLAGS += -g3
 CFLAGS += -fno-exceptions
 

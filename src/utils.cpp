@@ -5,7 +5,9 @@
 #include <cstddef>
 #include <span>
 #include <string_view>
-#include <assert.h>
+// #include <assert.h>
+#define panic() __builtin_trap()
+#define assert(x) if (!(x)) panic()
 #include <tuple>
 #include <stdio.h>
 #include <strings.h>
@@ -136,7 +138,12 @@ using i32xrange = idx_range<i32>;
 using i16xrange = idx_range<i16>;
 using i8xrange = idx_range<i8>;
 
-template<typename N> struct num_range { N min, max; N size() { return max - min; } };
+template<typename N> struct num_range {
+	N min, max;
+	N size() { return max - min; }
+	bool contains_ex(N n) { return min < n && n < max; }
+	bool contains_inc(N n) { return min <= n && n <= max; }
+};
 
 template<typename N> idx_range<N> iter_inc(num_range<N> range) { return { range.min, range.max + 1 }; }
 template<typename N> idx_range<N> iter_ex(num_range<N> range) { return { range.min, range.max }; }
