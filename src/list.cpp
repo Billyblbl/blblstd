@@ -107,7 +107,7 @@ template<typename T> struct List {
 
 	bool grow(Arena& arena, u32 intended_pushes = 1) {
 		if (current + intended_pushes > capacity.size()) {
-			capacity = arena.morph_array(capacity, max(max(1, capacity.size()) * 2, max(1, capacity.size()) + intended_pushes));
+			capacity = arena.morph_array(capacity, max(max(1ull, capacity.size()) * 2, max(1ull, capacity.size()) + intended_pushes));
 			//TODO error handling upon realloc failure
 			return true;
 		} else return false;

@@ -64,13 +64,12 @@ struct Arena {
 			else
 				return used().subspan(start);
 		} else {
-			assert((fprintf(stderr, "Failed allocation : available=%lu, requested=%lu\n", free().size(), size), flags & ALLOW_FAILURE));
+			assert((fprintf(stderr, "Failed allocation : available=%llu, requested=%llu\n", free().size(), size), flags & ALLOW_FAILURE));
 			return {};
 		}
 	}
 
 	inline Buffer pop(u64 size, u64 flags_override = 0) {
-		auto start = current;
 		current -= size;
 		auto used_flags = flags_override ? flags_override : flags;
 		//TODO handle chained arenas
@@ -99,7 +98,7 @@ struct Arena {
 			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), new_buffer.size()));
 			return new_buffer;
 		} else {
-			assert((fprintf(stderr, "Failed morph : initial=%lu, available=%lu, requested=%lu\n", buffer.size(), free().size(), size), flags & ALLOW_FAILURE));
+			assert((fprintf(stderr, "Failed morph : initial=%llu, available=%llu, requested=%llu\n", buffer.size(), free().size(), size), flags & ALLOW_FAILURE));
 			return buffer;
 		}
 	}

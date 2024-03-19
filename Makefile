@@ -2,7 +2,7 @@
 # GXX_PATH -> path to g++ executable
 # BUILD_DIR -> path to build directory
 
-CXX=$(GXX_PATH)
+CXX=$(CXX_PATH)
 BIN = $(BUILD_DIR)/blblstd.o
 
 MAIN = src/blblstd.cpp
@@ -22,9 +22,9 @@ INC = .
 INC += src
 
 LIB = .
-CFLAGS += -std=c++23
+CXXFLAGS += -std=c++23
 # CFLAGS += -g3
-CFLAGS += -fno-exceptions
+CXXFLAGS += -fno-exceptions
 
 COLOR=\033[0;34m
 NOCOLOR=\033[0m
@@ -36,17 +36,17 @@ $(BUILD_DIR):
 
 $(BIN): $(BUILD_DIR) $(SRC)
 	@echo -e "Building $(COLOR)blblstd$(NOCOLOR)"
-	@$(CXX) $(CFLAGS) -c $(MAIN) $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS) -o $@
+	@$(CXX) $(CXXFLAGS) -c $(MAIN) $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS) -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
 
 test: $(BIN)
 	@echo -e "Building $(COLOR)test$(NOCOLOR)"
-	@$(CXX) test.cpp $(BIN) $(CFLAGS) -o $(BUILD_DIR)/test.exe $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS)
+	@$(CXX) test.cpp $(BIN) $(CXXFLAGS) -o $(BUILD_DIR)/test.exe $(INC:%=-I%) $(LIB:%=-L%) $(LDFLAGS)
 	@echo -e "Testing $(COLOR)blblstd$(NOCOLOR)"
 	$(BUILD_DIR)/test.exe
 
 re: clean bin
 
-.PHONY: bin clean re
+.PHONY: bin clean test re

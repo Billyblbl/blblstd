@@ -58,7 +58,7 @@ template<typename T, typename S> concept tuple_equivalent = sizeof(T) == sizeof(
 //! Broken
 // template<typename S, tuple_equivalent<S> T> auto tuple_array_as(Array<T> t) { return cast<S>(t); }
 
-template<typename T, u64... indices> auto to_tuple_helper(std::integer_sequence<u64, indices...> int_seq, Array<T> arr) {
+template<typename T, u64... indices> auto to_tuple_helper(std::integer_sequence<u64, indices...>, Array<T> arr) {
 	return tuple(arr[indices]...);
 }
 

@@ -18,7 +18,10 @@ template<typename T> struct LinkedNode {
 
 template<typename T, T* T::* l> u64 count(T* list) {
 	u64 i = 0;
-	for (auto _ : traverse_by<T, l>(list)) i++;
+	for (auto _i : traverse_by<T, l>(list)) {
+		(void)_i;
+		i++;
+	}
 	return i;
 }
 
