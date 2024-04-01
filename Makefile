@@ -22,6 +22,7 @@ INC = .
 INC += src
 
 LIB = .
+CXXFLAGS += $(CFLAGS)
 CXXFLAGS += -std=c++23
 # CFLAGS += -g3
 CXXFLAGS += -fno-exceptions

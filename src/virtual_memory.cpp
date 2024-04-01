@@ -19,6 +19,7 @@ Buffer virtual_reserve(usize size, bool commit) {
 	if (!ptr) {
 		auto err = GetLastError();
 		//TODO logs something with FormatMessage()
+		(void)err;
 		return Buffer{};
 	}
 	return Buffer((byte*)ptr, size);
@@ -30,6 +31,7 @@ Buffer virtual_commit(Buffer buffer) {
 	if (!ptr) {
 		auto err = GetLastError();
 		//TODO logs something with FormatMessage()
+		(void)err;
 		return Buffer{};
 	}
 	return buffer;
@@ -40,6 +42,7 @@ void virtual_decommit(Buffer buffer) {
 	if (!success) {
 		auto err = GetLastError();
 		//TODO logs something with FormatMessage()
+		(void)err;
 	}
 }
 
@@ -48,6 +51,7 @@ void virtual_release(Buffer buffer) {
 	if (!success) {
 		auto err = GetLastError();
 		//TODO logs something with FormatMessage()
+		(void)err;
 	}
 }
 

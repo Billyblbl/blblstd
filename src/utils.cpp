@@ -47,12 +47,15 @@ using utf32 = std::u32string_view;
 using any = void;
 
 template<typename T> using Array = std::span<T>;
-template<typename T> using LiteralArray = std::initializer_list<T>;
+//*clang can't infer T when using template alias, so lets just abuse the preprocessor for this, whatever
+// template<typename T> using LiteralArray = std::initializer_list<T>;
+#define LiteralArray std::initializer_list
 template<typename T, typename U> inline auto cast(Array<U> arr) {
 	return Array<T>((T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T));
 }
 
-template<typename... T> using tuple = std::tuple<T...>;
+// template<typename... T> using tuple = std::tuple<T...>;
+using std::tuple;
 template<typename S> S tuple_as(auto t) { return std::apply([](auto&&... args) -> S { return { args... };}, t); }
 template<typename T, typename S> concept tuple_equivalent = sizeof(T) == sizeof(S) && alignof(T) == alignof(S) && requires (const T & t) { { tuple_as<S>(t) } -> std::same_as<S>; };
 //! Broken
