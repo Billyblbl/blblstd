@@ -16,18 +16,19 @@ struct Arena {
 		ALLOW_MOVE_MORPH = 1 << 3,
 		ALLOW_CHAIN_GROWTH = 1 << 4,
 		FULL_COMMIT = 1 << 5,
-		NONE = u64(1) << 63,
+		FORCE_NONE = u64(1) << 63,
 	};
 
 	static inline Arena from_buffer(Buffer buffer, u64 flags = 0) {
 		Arena new_arena;
 		new_arena.bytes = buffer;
-		new_arena.flags = flags & ~ALLOW_CHAIN_GROWTH;//? chain growth not allowed as implementation is incomplete
+		assert(!(flags & ALLOW_CHAIN_GROWTH));//? chain growth not allowed as implementation is incomplete
+		new_arena.flags = flags;
 		return new_arena;
 	}
 
-	template<typename T> static inline Arena from_array(Array<T> buffer, u64 flags = 0) { return from_buffer(cast<byte>(buffer), flags); }
-	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_buffer(larray(arr), flags); }
+	template<typename T> static inline Arena from_array(Array<T> arr, u64 flags = 0) { return from_buffer(cast<byte>(arr), flags); }
+	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_array(larray(arr), flags); }
 
 	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) { return from_buffer(virtual_reserve(size, flags & FULL_COMMIT), flags); }
 
@@ -51,20 +52,22 @@ struct Arena {
 	inline Buffer used() const { return bytes.subspan(0, current); }
 	inline Buffer free() const { return bytes.subspan(current); }
 
-	inline Buffer push(u64 size, bool zero_mem = false) {
-		if ((flags & ALLOW_CHAIN_GROWTH) && size > free().size())
+	inline Buffer push_bytes(u64 size, u64 align, bool zero_mem = false) {
+		auto padding = -uintptr_t(free().data()) & (align - 1); //* based on https://nullprogram.com/blog/2023/09/27/
+		auto inprint = padding + size;
+		if ((flags & ALLOW_CHAIN_GROWTH) && inprint > free().size())
 			next = &Arena::from_vmem(bytes.size(), flags).self_contain();
-		if (current <= bytes.size() - size) {
-			auto start = current;
-			current += size;
-			if ((flags & COMMIT_ON_PUSH))
+		if (current <= bytes.size() - inprint) {
+			auto start = current + padding;
+			current += inprint;
+			if ((flags & COMMIT_ON_PUSH) && !(flags & FULL_COMMIT))
 				virtual_commit(used().subspan(start));
 			if (zero_mem)
 				return zero_buff(used().subspan(start));
 			else
 				return used().subspan(start);
 		} else {
-			assert((fprintf(stderr, "Failed allocation : available=%llu, requested=%llu\n", free().size(), size), flags & ALLOW_FAILURE));
+			assert((fprintf(stderr, "Failed allocation : available=%llu, requested=%llu, needed=%llu\n", free().size(), size, inprint), flags & ALLOW_FAILURE));
 			return {};
 		}
 	}
@@ -73,7 +76,7 @@ struct Arena {
 		current -= size;
 		auto used_flags = flags_override ? flags_override : flags;
 		//TODO handle chained arenas
-		if (current == 0 && (used_flags & DECOMMIT_ON_EMPTY))
+		if (current == 0 && (used_flags & DECOMMIT_ON_EMPTY) && !(used_flags & FULL_COMMIT))
 			virtual_decommit(bytes);
 		return free().subspan(0, size);
 	}
@@ -85,16 +88,16 @@ struct Arena {
 		return *this;
 	}
 
-	inline Buffer morph(Buffer buffer, u64 size) {
+	inline Buffer morph(Buffer buffer, u64 size, u64 align) {
 		if (buffer.size() == size) return buffer;
 		if (buffer.end() == used().end()) {
-			pop(buffer.size(), NONE);
-			auto new_buffer = push(size);
-			return new_buffer.data() ? new_buffer : push(buffer.size());
+			pop(buffer.size(), FORCE_NONE);
+			auto new_buffer = push_bytes(size, align);
+			return new_buffer.data() ? new_buffer : push_bytes(buffer.size(), align);
 		} else if (size < buffer.size()) {
 			return buffer.subspan(0, size);
 		} else if (flags & ALLOW_MOVE_MORPH) {
-			auto new_buffer = push(size);
+			auto new_buffer = push_bytes(size, align);
 			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), new_buffer.size()));
 			return new_buffer;
 		} else {
@@ -103,7 +106,7 @@ struct Arena {
 		}
 	}
 
-	template<typename T> inline Array<T> push_array(usize count, bool zero_mem = false) { return cast<T>(push(count * sizeof(T), zero_mem)); }
+	template<typename T> inline Array<T> push_array(usize count, bool zero_mem = false) { return cast<T>(push_bytes(count * sizeof(T), alignof(T), zero_mem)); }
 
 	template<typename T> inline Array<T> push_array(Array<const T> arr) {
 		auto other = push_array<T>(arr.size());
@@ -124,11 +127,11 @@ struct Arena {
 		return arr.data();
 	}
 
-	template<typename T> inline T& push(bool zero_mem = false) { return cast<T>(push(sizeof(T), zero_mem))[0]; }
-	template<typename T> inline T& push(const T& obj) { return cast<T>(push(sizeof(T)))[0] = obj; }
+	template<typename T> inline T& push(bool zero_mem = false) { return cast<T>(push_bytes(sizeof(T), alignof(T), zero_mem))[0]; }
+	template<typename T> inline T& push(const T& obj) { return cast<T>(push_bytes(sizeof(T), alignof(T)))[0] = obj; }
 
 	template<typename T> inline Array<T> morph_array(Array<T> arr, u64 count) {
-		return cast<T>(morph(cast<byte>(arr), count * sizeof(T)));
+		return cast<T>(morph(cast<byte>(arr), count * sizeof(T), alignof(T)));
 	}
 
 	inline Arena& self_contain() { return push(*this); }
