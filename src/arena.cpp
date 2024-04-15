@@ -2,6 +2,7 @@
 # define GARENA
 
 #include <virtual_memory.cpp>
+#include <sanitizer/asan_interface.h>
 
 struct Arena {
 	Buffer bytes = {};
@@ -30,7 +31,12 @@ struct Arena {
 	template<typename T> static inline Arena from_array(Array<T> arr, u64 flags = 0) { return from_buffer(cast<byte>(arr), flags); }
 	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_array(larray(arr), flags); }
 
-	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) { return from_buffer(virtual_reserve(size, flags & FULL_COMMIT), flags); }
+	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) {
+		auto buffer = virtual_reserve(size, flags & FULL_COMMIT);
+		if (flags & COMMIT_ON_PUSH)
+			poison(buffer);
+		return from_buffer(buffer, flags);
+	}
 
 	Arena& commit_all() {
 		virtual_commit(bytes);
@@ -52,20 +58,32 @@ struct Arena {
 	inline Buffer used() const { return bytes.subspan(0, current); }
 	inline Buffer free() const { return bytes.subspan(current); }
 
+	static Buffer poison(Buffer buffer) {
+		ASAN_POISON_MEMORY_REGION(buffer.data(), buffer.size_bytes());
+		return buffer;
+	}
+
+	static Buffer unpoison(Buffer buffer) {
+		ASAN_UNPOISON_MEMORY_REGION(buffer.data(), buffer.size_bytes());
+		return buffer;
+	}
+
 	inline Buffer push_bytes(u64 size, u64 align, bool zero_mem = false) {
 		auto padding = -uintptr_t(free().data()) & (align - 1); //* based on https://nullprogram.com/blog/2023/09/27/
 		auto inprint = padding + size;
+
 		if ((flags & ALLOW_CHAIN_GROWTH) && inprint > free().size())
 			next = &Arena::from_vmem(bytes.size(), flags).self_contain();
+
 		if (current <= bytes.size() - inprint) {
 			auto start = current + padding;
 			current += inprint;
 			if ((flags & COMMIT_ON_PUSH) && !(flags & FULL_COMMIT))
-				virtual_commit(used().subspan(start));
+				poison(virtual_commit(used().subspan(start)));
 			if (zero_mem)
-				return zero_buff(used().subspan(start));
+				return zero_buff(unpoison(used().subspan(start)));
 			else
-				return used().subspan(start);
+				return unpoison(used().subspan(start));
 		} else {
 			assert((fprintf(stderr, "Failed allocation : available=%llu, requested=%llu, needed=%llu\n", free().size(), size, inprint), flags & ALLOW_FAILURE));
 			return {};
@@ -76,9 +94,12 @@ struct Arena {
 		current -= size;
 		auto used_flags = flags_override ? flags_override : flags;
 		//TODO handle chained arenas
-		if (current == 0 && (used_flags & DECOMMIT_ON_EMPTY) && !(used_flags & FULL_COMMIT))
+		auto popped = free().subspan(0, size);
+		if (current > 0 || !(used_flags & DECOMMIT_ON_EMPTY) || (used_flags & FULL_COMMIT))
+			poison(popped);
+		else
 			virtual_decommit(bytes);
-		return free().subspan(0, size);
+		return popped;
 	}
 
 	inline Buffer pop_to(u64 scope) { return pop(current - scope); }
