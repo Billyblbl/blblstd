@@ -5,11 +5,22 @@
 
 Buffer virtual_reserve(usize size, bool commit = false);
 Buffer virtual_commit(Buffer buffer);
+Buffer virtual_remake(Buffer buffer, u64 size, u64 content, u64 commit);
 //! decommit whole pages, not just the buffer
 void virtual_decommit(Buffer buffer);
 void virtual_release(Buffer buffer);
 
 #ifdef BLBLSTD_IMPL
+
+Buffer virtual_remake(Buffer buffer, u64 size, u64 content, u64 commit) {
+	if (content > commit)
+		commit = content;
+	auto new_buffer = virtual_reserve(size, commit == size);
+	if (commit > 0)
+		virtual_commit(new_buffer.subspan(0, min(commit, new_buffer.size())));
+	memcpy(new_buffer.data(), buffer.data(), min(content, new_buffer.size()));
+	return new_buffer;
+}
 
 #if defined(PLATFORM_WINDOWS)
 #include <windows.h>

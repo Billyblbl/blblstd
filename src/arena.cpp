@@ -13,12 +13,15 @@ struct Arena {
 	enum : u64 {
 		COMMIT_ON_PUSH = 1 << 0,
 		DECOMMIT_ON_EMPTY = 1 << 1,
-		ALLOW_FAILURE = 1 << 2,
-		ALLOW_MOVE_MORPH = 1 << 3,
-		ALLOW_CHAIN_GROWTH = 1 << 4,
-		FULL_COMMIT = 1 << 5,
+		FULL_COMMIT = 1 << 2,
+		ALLOW_FAILURE = 1 << 3,
+		ALLOW_MOVE_MORPH = 1 << 4,
+		ALLOW_CHAIN_GROWTH = 1 << 5,
+		ALLOW_VMEM_GROWTH = 1 << 6,
 		FORCE_NONE = u64(1) << 63,
 	};
+
+	inline bool is_stable() {return !(flags & (ALLOW_VMEM_GROWTH | ALLOW_MOVE_MORPH));}
 
 	static inline Arena from_buffer(Buffer buffer, u64 flags = 0) {
 		Arena new_arena;
@@ -55,15 +58,20 @@ struct Arena {
 		*this = {};
 	}
 
+	inline Arena& vmem_resize(u64 size) {
+		bytes = virtual_remake(bytes, size, current, flags & FULL_COMMIT ? size : 0);
+		return *this;
+	}
+
 	inline Buffer used() const { return bytes.subspan(0, current); }
 	inline Buffer free() const { return bytes.subspan(current); }
 
-	static Buffer poison(Buffer buffer) {
+	static inline Buffer poison(Buffer buffer) {
 		ASAN_POISON_MEMORY_REGION(buffer.data(), buffer.size_bytes());
 		return buffer;
 	}
 
-	static Buffer unpoison(Buffer buffer) {
+	static inline Buffer unpoison(Buffer buffer) {
 		ASAN_UNPOISON_MEMORY_REGION(buffer.data(), buffer.size_bytes());
 		return buffer;
 	}
@@ -73,7 +81,10 @@ struct Arena {
 		auto inprint = padding + size;
 
 		if ((flags & ALLOW_CHAIN_GROWTH) && inprint > free().size())
-			next = &Arena::from_vmem(bytes.size(), flags).self_contain();
+			next = &Arena::from_vmem(bytes.size(), flags).self_contain();//TODO use this
+
+		if ((flags & ALLOW_VMEM_GROWTH) && inprint > free().size())
+			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + inprint), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + inprint) : 0);
 
 		if (current <= bytes.size() - inprint) {
 			auto start = current + padding;
@@ -110,18 +121,18 @@ struct Arena {
 	}
 
 	inline Buffer morph(Buffer buffer, u64 size, u64 align) {
-		if (buffer.size() == size) return buffer;
-		if (buffer.end() == used().end()) {
+		if (buffer.size() == size) return buffer;//* untouched
+		if (buffer.end() == used().end()) {//* tip morph
 			pop(buffer.size(), FORCE_NONE);
 			auto new_buffer = push_bytes(size, align);
 			return new_buffer.data() ? new_buffer : push_bytes(buffer.size(), align);
-		} else if (size < buffer.size()) {
+		} else if (size < buffer.size()) {//* shrink
 			return buffer.subspan(0, size);
-		} else if (flags & ALLOW_MOVE_MORPH) {
+		} else if (flags & ALLOW_MOVE_MORPH) {//* move morph
 			auto new_buffer = push_bytes(size, align);
 			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), new_buffer.size()));
 			return new_buffer;
-		} else {
+		} else {//* failure
 			assert((fprintf(stderr, "Failed morph : initial=%llu, available=%llu, requested=%llu\n", buffer.size(), free().size(), size), flags & ALLOW_FAILURE));
 			return buffer;
 		}

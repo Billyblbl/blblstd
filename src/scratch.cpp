@@ -10,22 +10,15 @@ Arena& scratch_pop_scope(Arena& arena, u64 scope);
 
 #ifdef BLBLSTD_IMPL
 
-static u64 round_up_bit(u64 value) {
-	value--;
-	value |= value >> 1;
-	value |= value >> 2;
-	value |= value >> 4;
-	value |= value >> 8;
-	value |= value >> 16;
-	value |= value >> 32;
-	value++;
-	return value;
+static List<Arena> &get_scratches() {
+	constexpr auto MAX_SCRATCHES = 128;
+	static thread_local Arena buffer[MAX_SCRATCHES];
+	static thread_local List<Arena> scratches = { larray(buffer), 0 };
+	return scratches;
 }
 
 tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collisions) {
-	constexpr u8 MAX_SCRATCHES = 128;
-	static thread_local Arena buffer[MAX_SCRATCHES];
-	static thread_local List<Arena> scratches = { larray(buffer), 0 };
+	auto& scratches = get_scratches();
 
 	auto collide = [&](const Arena& s) { return linear_search(collisions, [&](const Arena* const c) { return c == &s; }) >= 0; };
 	auto i = linear_search(scratches.used(), [&](Arena& s) { return (s.current == 0 || s.free().size() >= size) && !collide(s); });
@@ -35,10 +28,8 @@ tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collis
 	if (i < 0) {
 		scratch = &scratches.push(Arena::from_vmem(size));
 	} else {
-		if (scratches[i].current == 0 && scratches[i].bytes.size() < size) {
-			scratches[i].vmem_release();
-			scratches[i] = Arena::from_vmem(size);
-		}
+		if (scratches[i].current == 0 && scratches[i].bytes.size() < size)
+			scratches[i].vmem_resize(size);
 		scratch = &scratches[i];
 	}
 

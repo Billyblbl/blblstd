@@ -66,6 +66,8 @@ template<typename T> inline T* duplicate(Alloc allocator, T& t, u64 flags = 0) {
 
 extern Alloc std_allocator;
 
+u64 round_up_bit(u64 value);
+
 #ifdef BLBLSTD_IMPL
 
 Buffer std_alloc_strategy(any*, Buffer buffer, usize size, u64) {
@@ -73,6 +75,19 @@ Buffer std_alloc_strategy(any*, Buffer buffer, usize size, u64) {
 	return Buffer((byte*)ptr, ptr != null ? size : 0);
 }
 Alloc std_allocator = { null, &std_alloc_strategy };
+
+u64 round_up_bit(u64 value) {
+	value--;
+	value |= value >> 1;
+	value |= value >> 2;
+	value |= value >> 4;
+	value |= value >> 8;
+	value |= value >> 16;
+	value |= value >> 32;
+	value++;
+	return value;
+}
+
 #endif
 
 #endif
