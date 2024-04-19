@@ -11,22 +11,21 @@ struct Arena {
 	u64 flags = 0;
 
 	enum : u64 {
-		COMMIT_ON_PUSH = 1 << 0,
-		DECOMMIT_ON_EMPTY = 1 << 1,
-		FULL_COMMIT = 1 << 2,
-		ALLOW_FAILURE = 1 << 3,
-		ALLOW_MOVE_MORPH = 1 << 4,
-		ALLOW_CHAIN_GROWTH = 1 << 5,
-		ALLOW_VMEM_GROWTH = 1 << 6,
-		FORCE_NONE = u64(1) << 63,
+		COMMIT_ON_PUSH = 1ull << 0,
+		DECOMMIT_ON_EMPTY = 1ull << 1,
+		FULL_COMMIT = 1ull << 2,
+		ALLOW_FAILURE = 1ull << 3,
+		ALLOW_MOVE_MORPH = 1ull << 4,//! Pointer unstable (for individual allocations components, since they can be moved)
+		ALLOW_CHAIN_GROWTH = 1ull << 5,//! Scope unstable
+		ALLOW_VMEM_GROWTH = 1ull << 6,//! Pointer unstable
+		FORCE_NONE = 1ull << 63,
 	};
 
-	inline bool is_stable() {return !(flags & (ALLOW_VMEM_GROWTH | ALLOW_MOVE_MORPH));}
+	inline bool is_stable() { return !(flags & (ALLOW_VMEM_GROWTH | ALLOW_MOVE_MORPH | ALLOW_CHAIN_GROWTH)); }
 
 	static inline Arena from_buffer(Buffer buffer, u64 flags = 0) {
 		Arena new_arena;
 		new_arena.bytes = buffer;
-		assert(!(flags & ALLOW_CHAIN_GROWTH));//? chain growth not allowed as implementation is incomplete
 		new_arena.flags = flags;
 		return new_arena;
 	}
@@ -76,15 +75,32 @@ struct Arena {
 		return buffer;
 	}
 
+	//? this model of sub arena might cause issues with scoped pops, since we're morphing into the sub arena in place and keeping a backup,
+	//? but otherwise can't use this in push_bytes & pop since otherwise we would have to somehow return the new arena struct's memory
+	inline Arena& push_sub_arena(u64 size) {
+		auto new_arena = from_vmem(size, flags);
+		auto& backup = new_arena.push(*this);
+		*this = new_arena;
+		next = &backup;
+		return *this;
+	}
+
+	inline Arena& pop_sub_arena() {
+		assert(next);
+		Arena backup = *next;
+		vmem_release();
+		return *this = backup;
+	}
+
 	inline Buffer push_bytes(u64 size, u64 align, bool zero_mem = false) {
 		auto padding = -uintptr_t(free().data()) & (align - 1); //* based on https://nullprogram.com/blog/2023/09/27/
 		auto inprint = padding + size;
 
-		if ((flags & ALLOW_CHAIN_GROWTH) && inprint > free().size())
-			next = &Arena::from_vmem(bytes.size(), flags).self_contain();//TODO use this
-
+		//* growth strategies
 		if ((flags & ALLOW_VMEM_GROWTH) && inprint > free().size())
 			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + inprint), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + inprint) : 0);
+		else if ((flags & ALLOW_CHAIN_GROWTH) && inprint > free().size())
+			push_sub_arena(2 * (sizeof(Arena) + max(inprint, u64(bytes.size()))));
 
 		if (current <= bytes.size() - inprint) {
 			auto start = current + padding;
@@ -108,8 +124,9 @@ struct Arena {
 		auto popped = free().subspan(0, size);
 		if (current > 0 || !(used_flags & DECOMMIT_ON_EMPTY) || (used_flags & FULL_COMMIT))
 			poison(popped);
-		else
+		else {
 			virtual_decommit(bytes);
+		}
 		return popped;
 	}
 

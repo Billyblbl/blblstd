@@ -11,7 +11,7 @@ Arena& scratch_pop_scope(Arena& arena, u64 scope);
 #ifdef BLBLSTD_IMPL
 
 static List<Arena> &get_scratches() {
-	constexpr auto MAX_SCRATCHES = 128;
+	constexpr auto MAX_SCRATCHES = 16;
 	static thread_local Arena buffer[MAX_SCRATCHES];
 	static thread_local List<Arena> scratches = { larray(buffer), 0 };
 	return scratches;
