@@ -26,14 +26,14 @@ tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collis
 	size = round_up_bit(size);
 
 	if (i < 0) {
-		scratch = &scratches.push(Arena::from_vmem(size));
+		scratch = &scratches.push(Arena::from_vmem(size, Arena::COMMIT_ON_PUSH | Arena::DECOMMIT_ON_EMPTY | Arena::ALLOW_CHAIN_GROWTH));
 	} else {
 		if (scratches[i].current == 0 && scratches[i].bytes.size() < size)
 			scratches[i].vmem_resize(size);
 		scratch = &scratches[i];
 	}
 
-	return { *scratch, scratch->current };
+	return { *scratch, scratch->scope() };
 }
 
 tuple<Arena&, u64> scratch_push_scope(u64 size, LiteralArray<const Arena*> collision) { return scratch_push_scope(size, larray(collision)); }

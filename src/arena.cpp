@@ -17,12 +17,12 @@ struct Arena {
 		FULL_COMMIT = 1ull << 2,
 		ALLOW_FAILURE = 1ull << 3,
 		ALLOW_MOVE_MORPH = 1ull << 4,//! Pointer unstable (for individual allocations components, since they can be moved)
-		ALLOW_CHAIN_GROWTH = 1ull << 5,//! Scope unstable
+		ALLOW_CHAIN_GROWTH = 1ull << 5,
 		ALLOW_VMEM_GROWTH = 1ull << 6,//! Pointer unstable
 		FORCE_NONE = 1ull << 63,
 	};
 
-	inline bool is_stable() { return !(flags & (ALLOW_VMEM_GROWTH | ALLOW_MOVE_MORPH | ALLOW_CHAIN_GROWTH)); }
+	inline bool is_stable() { return !(flags & (ALLOW_VMEM_GROWTH | ALLOW_MOVE_MORPH)); }
 
 	static inline Arena from_buffer(Buffer buffer, u64 flags = 0) {
 		Arena new_arena;
@@ -38,7 +38,9 @@ struct Arena {
 	template<typename T> static inline Arena from_array(Array<T> arr, u64 flags = 0) { return from_buffer(cast<byte>(arr), flags | FULL_COMMIT); }
 	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_array(larray(arr), flags | FULL_COMMIT); }
 
-	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) {
+	static constexpr u64 DEFAULT_VMEM_FLAGS = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY | ALLOW_CHAIN_GROWTH;
+
+	static inline Arena from_vmem(u64 size, u64 flags = DEFAULT_VMEM_FLAGS) {
 		auto buffer = virtual_reserve(size, flags & FULL_COMMIT);
 		if ((flags & FULL_COMMIT))
 			poison(buffer);
@@ -82,21 +84,13 @@ struct Arena {
 		return buffer;
 	}
 
-	//? this model of sub arena might cause issues with scoped pops, since we're morphing into the sub arena in place and keeping a backup,
-	//? but otherwise can't use this in push_bytes & pop since otherwise we would have to somehow return the new arena struct's memory
-	inline Arena& push_sub_arena(u64 size) {
-		auto new_arena = from_vmem(size, flags);
-		auto& backup = new_arena.push(*this);
-		*this = new_arena;
-		next = &backup;
-		return *this;
-	}
+	inline Arena& push_sub_arena(u64 size) { return *(next = &from_vmem(size, flags).self_contain()); }
 
-	inline Arena& pop_sub_arena() {
-		assert(next);
-		Arena backup = *next;
-		vmem_release();
-		return *this = backup;
+	u64 scope(bool local_only = false) const {
+		if (local_only) return current;
+		u64 scope = current;
+		if (next) scope += next->scope();
+		return scope;
 	}
 
 	static constexpr u64 PAGE_SIZE_HEURISTIC = 4096;
@@ -109,8 +103,11 @@ struct Arena {
 		//* growth strategies
 		if ((flags & ALLOW_VMEM_GROWTH) && extent > free().size())
 			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + extent), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + extent) : commit);
-		else if ((flags & ALLOW_CHAIN_GROWTH) && extent > free().size())
-			push_sub_arena(2 * (sizeof(Arena) + max(extent, u64(bytes.size()))));
+		else if ((flags & ALLOW_CHAIN_GROWTH) && extent > free().size()) {
+			if (!next)
+				push_sub_arena(2 * (sizeof(Arena) + max(extent, u64(bytes.size()))));
+			return next->push_bytes(size, align, zero_mem);
+		}
 
 		if (extent > bytes.size() || current > bytes.size() - extent) {
 			fprintf(stderr, "Failed allocation : available=%llu, requested=%llu, needed=%llu\n", free().size(), size, extent);
@@ -131,13 +128,21 @@ struct Arena {
 			return unpoison(used().subspan(start));
 	}
 
-	inline Buffer pop(u64 size, u64 flags_override = 0) {
-		current -= size;
+	inline u64 pop(u64 size, u64 flags_override = 0) {
+		if (next) {
+			auto sub_popped = next->pop(size, flags_override);
+			size -= sub_popped;
+			if (next->current == 0) {
+				next->vmem_release();
+				next = null;
+			}
+		}
+		auto popped = min(current, size);
+		current -= popped;
+
 		auto used_flags = flags_override ? flags_override : flags;
-		//TODO handle chained arenas
-		auto popped = free().subspan(0, size);
 		if (current > 0 || !(used_flags & DECOMMIT_ON_EMPTY) || (used_flags & FULL_COMMIT))
-			poison(popped);
+			poison(free().subspan(0, popped));
 		else {
 			virtual_decommit(bytes);
 			commit = 0;
@@ -145,7 +150,13 @@ struct Arena {
 		return popped;
 	}
 
-	inline Buffer pop_to(u64 scope) { return pop(current - scope); }
+	inline u64 pop_to(u64 scope) {
+		if (scope > bytes.size()) {
+			return next->pop_to(scope - bytes.size());
+		} else {
+			return pop(current - scope);
+		}
+	}
 
 	inline Arena& reset() {
 		pop(current);
