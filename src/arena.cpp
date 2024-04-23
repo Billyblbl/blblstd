@@ -6,8 +6,9 @@
 
 struct Arena {
 	Buffer bytes = {};
-	Arena* next = null;
 	u64 current = 0;
+	u64 commit = 0;
+	Arena* next = null;
 	u64 flags = 0;
 
 	enum : u64 {
@@ -27,21 +28,26 @@ struct Arena {
 		Arena new_arena;
 		new_arena.bytes = buffer;
 		new_arena.flags = flags;
+		new_arena.commit = (flags & FULL_COMMIT) ? buffer.size() : 0;
+		new_arena.current = 0;
+		new_arena.next = null;
+		assert(flags & (FULL_COMMIT | COMMIT_ON_PUSH));//* if none of these flags is present, we're never committing memory
 		return new_arena;
 	}
 
-	template<typename T> static inline Arena from_array(Array<T> arr, u64 flags = 0) { return from_buffer(cast<byte>(arr), flags); }
-	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_array(larray(arr), flags); }
+	template<typename T> static inline Arena from_array(Array<T> arr, u64 flags = 0) { return from_buffer(cast<byte>(arr), flags | FULL_COMMIT); }
+	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_array(larray(arr), flags | FULL_COMMIT); }
 
 	static inline Arena from_vmem(u64 size, u64 flags = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY) {
 		auto buffer = virtual_reserve(size, flags & FULL_COMMIT);
-		if (flags & COMMIT_ON_PUSH)
+		if ((flags & FULL_COMMIT))
 			poison(buffer);
 		return from_buffer(buffer, flags);
 	}
 
 	Arena& commit_all() {
 		virtual_commit(bytes);
+		commit = bytes.size();
 		flags |= FULL_COMMIT;
 		return *this;
 	}
@@ -52,18 +58,19 @@ struct Arena {
 	}
 
 	void vmem_release() {
-		if (flags & ALLOW_CHAIN_GROWTH) next->vmem_release();
+		if (next) next->vmem_release();
 		virtual_release(bytes);
 		*this = {};
 	}
 
 	inline Arena& vmem_resize(u64 size) {
-		bytes = virtual_remake(bytes, size, current, flags & FULL_COMMIT ? size : 0);
+		bytes = virtual_remake(bytes, size, current, flags & FULL_COMMIT ? size : commit);
 		return *this;
 	}
 
 	inline Buffer used() const { return bytes.subspan(0, current); }
 	inline Buffer free() const { return bytes.subspan(current); }
+	inline Buffer commited() const { return bytes.subspan(0, commit); }
 
 	static inline Buffer poison(Buffer buffer) {
 		ASAN_POISON_MEMORY_REGION(buffer.data(), buffer.size_bytes());
@@ -92,29 +99,36 @@ struct Arena {
 		return *this = backup;
 	}
 
+	static constexpr u64 PAGE_SIZE_HEURISTIC = 4096;
+	static constexpr u64 COMMIT_CHUNK_SIZE = PAGE_SIZE_HEURISTIC * 4;
+
 	inline Buffer push_bytes(u64 size, u64 align, bool zero_mem = false) {
-		auto padding = -uintptr_t(free().data()) & (align - 1); //* based on https://nullprogram.com/blog/2023/09/27/
-		auto inprint = padding + size;
+		u64 padding = -uintptr_t(free().data()) & (align - 1); //* based on https://nullprogram.com/blog/2023/09/27/
+		u64 extent = padding + size;
 
 		//* growth strategies
-		if ((flags & ALLOW_VMEM_GROWTH) && inprint > free().size())
-			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + inprint), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + inprint) : 0);
-		else if ((flags & ALLOW_CHAIN_GROWTH) && inprint > free().size())
-			push_sub_arena(2 * (sizeof(Arena) + max(inprint, u64(bytes.size()))));
+		if ((flags & ALLOW_VMEM_GROWTH) && extent > free().size())
+			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + extent), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + extent) : commit);
+		else if ((flags & ALLOW_CHAIN_GROWTH) && extent > free().size())
+			push_sub_arena(2 * (sizeof(Arena) + max(extent, u64(bytes.size()))));
 
-		if (current <= bytes.size() - inprint) {
-			auto start = current + padding;
-			current += inprint;
-			if ((flags & COMMIT_ON_PUSH) && !(flags & FULL_COMMIT))
-				poison(virtual_commit(used().subspan(start)));
-			if (zero_mem)
-				return zero_buff(unpoison(used().subspan(start)));
-			else
-				return unpoison(used().subspan(start));
-		} else {
-			assert((fprintf(stderr, "Failed allocation : available=%llu, requested=%llu, needed=%llu\n", free().size(), size, inprint), flags & ALLOW_FAILURE));
+		if (extent > bytes.size() || current > bytes.size() - extent) {
+			fprintf(stderr, "Failed allocation : available=%llu, requested=%llu, needed=%llu\n", free().size(), size, extent);
+			assert(flags & ALLOW_FAILURE);
 			return {};
 		}
+		u64 start = current + padding;
+		current += extent;
+		if (current > commit && (flags & COMMIT_ON_PUSH)) {
+			u64 prev_commit = commit;
+			commit = min(((current / COMMIT_CHUNK_SIZE) + 1) * COMMIT_CHUNK_SIZE, bytes.size());
+			poison(virtual_commit(commited().subspan(prev_commit)));
+		}
+		assert(commit >= current);
+		if (zero_mem)
+			return zero_buff(unpoison(used().subspan(start)));
+		else
+			return unpoison(used().subspan(start));
 	}
 
 	inline Buffer pop(u64 size, u64 flags_override = 0) {
@@ -126,6 +140,7 @@ struct Arena {
 			poison(popped);
 		else {
 			virtual_decommit(bytes);
+			commit = 0;
 		}
 		return popped;
 	}
@@ -133,7 +148,8 @@ struct Arena {
 	inline Buffer pop_to(u64 scope) { return pop(current - scope); }
 
 	inline Arena& reset() {
-		pop(current);//TODO handle chained arenas
+		pop(current);
+		if (next) next->vmem_release();
 		return *this;
 	}
 
