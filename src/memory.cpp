@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 using Buffer = Array<byte>;
+using ROBuffer = Array<const byte>;
 using AllocStrat = Buffer(*)(any*, Buffer, usize, u64);
 
 struct Alloc {
