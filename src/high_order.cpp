@@ -37,6 +37,15 @@ template<typename T> auto map(Arena& arena, Array<T> collection, auto mapper) {
 	return list.used();
 }
 
+template<typename T, typename R> auto map(Array<R> buff, Array<T> collection, auto mapper) {
+	// using R = decltype(mapper(collection[0]));
+	auto arena = Arena::from_array(buff);
+	auto list = List{ arena.template push_array<R>(collection.size()), 0 };
+	for (auto&& i : collection)
+		list.push(mapper(i));
+	return list.used();
+}
+
 template<typename T> i64 best_fit_search(Array<T> collection, auto score) {
 	if (collection.size() == 0)
 		return -1;

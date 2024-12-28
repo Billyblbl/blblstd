@@ -51,7 +51,7 @@ template<typename T> using Array = std::span<T>;
 // template<typename T> using LiteralArray = std::initializer_list<T>;
 #define LiteralArray std::initializer_list
 template<typename T, typename U> inline auto cast(Array<U> arr) {
-	return Array<T>((T*)arr.data(), (arr.size() * sizeof(U)) / sizeof(T));
+	return Array<T>((T*)arr.data(), arr.size_bytes() / sizeof(T));
 }
 
 // template<typename... T> using tuple = std::tuple<T...>;
