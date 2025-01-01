@@ -143,9 +143,10 @@ using i8xrange = idx_range<i8>;
 
 template<typename N> struct num_range {
 	N min, max;
-	N size() { return max - min; }
-	bool contains_ex(N n) { return min < n && n < max; }
-	bool contains_inc(N n) { return min <= n && n <= max; }
+	N size() const { return max - min; }
+	bool contains_ex(N n) const { return min < n && n < max; }
+	bool contains_inc(N n) const { return min <= n && n <= max; }
+	bool contains_idx(N n) const { return min <= n && n < max; }
 };
 
 template<typename N> idx_range<N> iter_inc(num_range<N> range) { return { range.min, range.max + 1 }; }
