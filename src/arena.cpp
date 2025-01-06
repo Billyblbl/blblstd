@@ -212,6 +212,13 @@ struct Arena {
 
 	inline Arena& self_contain() { return push(*this); }
 
+	template<typename... Args> string format(const cstr fmt, Args&&... args) {
+		auto size = snprintf(null, 0, fmt, args...);
+		auto str = push_array<char>(size + 1);
+		snprintf(str.data(), size + 1, fmt, args...);
+		return string(str.data(), size);
+	}
+
 };
 
 #endif
