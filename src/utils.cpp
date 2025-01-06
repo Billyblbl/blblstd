@@ -98,10 +98,10 @@ inline string flag_name(Array<string> names, auto flag) { return names[ffs(flag)
 
 constexpr auto null = nullptr;
 
-inline auto min(auto a, auto b) { return a < b ? a : b; }
-inline auto max(auto a, auto b) { return a > b ? a : b; }
-inline auto min(auto... v, auto a) { return min(min(v...), a); }
-inline auto max(auto... v, auto a) { return max(max(v...), a); }
+inline constexpr auto min(auto a, auto b) { return a < b ? a : b; }
+inline constexpr auto max(auto a, auto b) { return a > b ? a : b; }
+inline constexpr auto min(auto... v, auto a) { return min(min(v...), a); }
+inline constexpr auto max(auto... v, auto a) { return max(max(v...), a); }
 
 // System guard
 static_assert(sizeof(u8) == 1);
