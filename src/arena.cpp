@@ -16,22 +16,26 @@ struct Arena {
 		DECOMMIT_ON_EMPTY = 1ull << 1,
 		FULL_COMMIT = 1ull << 2,
 		ALLOW_FAILURE = 1ull << 3,
-		ALLOW_MOVE_MORPH = 1ull << 4,//! Pointer unstable (for individual allocations components, since they can be moved)
+		ALLOW_MOVE_MORPH = 1ull << 4,
 		ALLOW_CHAIN_GROWTH = 1ull << 5,
-		ALLOW_VMEM_GROWTH = 1ull << 6,//! Pointer unstable
+		ALLOW_VMEM_REPLACE_GROWTH = 1ull << 6,//! Pointer unstable
+		ALLOW_SCOPE_UNSTABLE = 1ull << 7,
 		FORCE_NONE = 1ull << 63,
 	};
 
-	inline bool is_stable() { return !(flags & (ALLOW_VMEM_GROWTH | ALLOW_MOVE_MORPH)); }
+	inline bool is_stable() { return !(flags & (ALLOW_VMEM_REPLACE_GROWTH | ALLOW_SCOPE_UNSTABLE | ALLOW_FAILURE)); }
 
 	static inline Arena from_buffer(Buffer buffer, u64 flags = 0) {
-		Arena new_arena;
-		new_arena.bytes = buffer;
-		new_arena.flags = flags;
-		new_arena.commit = (flags & FULL_COMMIT) ? buffer.size() : 0;
-		new_arena.current = 0;
-		new_arena.next = null;
-		assert(flags & (FULL_COMMIT | COMMIT_ON_PUSH));//* if none of these flags is present, we're never committing memory
+		assert(flags & (FULL_COMMIT | COMMIT_ON_PUSH));//* if none of these flags is present, we never have committed memory
+		Arena new_arena = {
+			.bytes = buffer,
+			.current = 0,
+			.commit = (flags & FULL_COMMIT) ? buffer.size() : 0,
+			.next = null,
+			.flags = flags
+		};
+		if (flags & ALLOW_CHAIN_GROWTH)//* preallocates the next arena' slot, avoids all the fuckery when doing growth by self containing the next arenas
+			new_arena.next = &new_arena.push(Arena{});
 		return new_arena;
 	}
 
@@ -61,8 +65,10 @@ struct Arena {
 
 	void vmem_release() {
 		if (next) next->vmem_release();
-		virtual_release(bytes);
-		*this = {};
+		if (bytes.size() > 0) {
+			virtual_release(bytes);
+			*this = {};
+		}
 	}
 
 	inline Arena& vmem_resize(u64 size) {
@@ -84,31 +90,27 @@ struct Arena {
 		return buffer;
 	}
 
-	inline Arena& push_sub_arena(u64 size) { return *(next = &from_vmem(size, flags).self_contain()); }
+	inline Arena& push_sub_arena(u64 size) {
+		assert(flags & ALLOW_CHAIN_GROWTH);
+		assert(next);
+		*next = from_vmem(size, flags);
+		return *next;
+	}
 
 	u64 scope(bool local_only = false) const {
 		if (local_only) return current;
 		u64 scope = current;
-		if (next) scope += next->scope();
+		if (next && next->bytes.size() > 0) scope += next->scope();
 		return scope;
 	}
 
 	static constexpr u64 PAGE_SIZE_HEURISTIC = 4096;
 	static constexpr u64 COMMIT_CHUNK_SIZE = PAGE_SIZE_HEURISTIC * 4;
 
-	inline Buffer push_bytes(u64 size, u64 align, bool zero_mem = false) {
-		u64 padding = -uintptr_t(free().data()) & (align - 1); //* based on https://nullprogram.com/blog/2023/09/27/
-		u64 extent = padding + size;
+	inline u64 align_padding(u64 align) { return -uintptr_t(free().data()) & (align - 1); }//* based on https://nullprogram.com/blog/2023/09/27/
 
-		//* growth strategies
-		if ((flags & ALLOW_VMEM_GROWTH) && extent > free().size())
-			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + extent), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + extent) : commit);
-		else if ((flags & ALLOW_CHAIN_GROWTH) && extent > free().size()) {
-			if (!next)
-				push_sub_arena(2 * (sizeof(Arena) + max(extent, u64(bytes.size()))));
-			return next->push_bytes(size, align, zero_mem);
-		}
-
+	inline Buffer push_local(u64 size, u64 padding, bool zero_mem = false) {
+		auto extent = size + padding;
 		if (extent > bytes.size() || current > bytes.size() - extent) {
 			fprintf(stderr, "Failed allocation : available=%llu, requested=%llu, needed=%llu\n", free().size(), size, extent);
 			assert(flags & ALLOW_FAILURE);
@@ -128,56 +130,87 @@ struct Arena {
 			return unpoison(used().subspan(start));
 	}
 
-	inline u64 pop(u64 size, u64 flags_override = 0) {
-		if (next) {
-			auto sub_popped = next->pop(size, flags_override);
-			size -= sub_popped;
-			if (next->current == 0) {
-				next->vmem_release();
-				next = null;
-			}
-		}
-		auto popped = min(current, size);
-		current -= popped;
+	inline Buffer push_bytes(u64 size, u64 align, bool zero_mem = false) {
+		u64 padding = align_padding(align);
+		u64 extent = padding + size;
 
+		//* growth strategies
+		if ((flags & ALLOW_VMEM_REPLACE_GROWTH) && extent > free().size())
+			bytes = virtual_remake(bytes, round_up_bit(bytes.size() + extent), current, flags & FULL_COMMIT ? round_up_bit(bytes.size() + extent) : commit);
+		else if (
+			(flags & ALLOW_CHAIN_GROWTH) &&
+			(
+				extent > free().size() || //* local doesn't have enough space or
+				((next && next->current > 0) && !(flags & ALLOW_SCOPE_UNSTABLE))//* next has data which forbids local to change scope() result
+				)
+			) {
+			if (next->bytes.size() == 0)
+				push_sub_arena(2 * (sizeof(Arena) + max(extent, u64(bytes.size()))));
+			return next->push_bytes(size, align, zero_mem);
+		}
+
+		return push_local(size, padding, zero_mem);
+	}
+
+	inline u64 pop_local(u64 size, u64 flags_override = 0) {
+		auto popped = min(current, size);
+		if (popped == 0)
+			return popped;
+		current -= popped;
 		auto used_flags = flags_override ? flags_override : flags;
-		if (current > 0 || !(used_flags & DECOMMIT_ON_EMPTY) || (used_flags & FULL_COMMIT))
-			poison(free().subspan(0, popped));
-		else {
-			virtual_decommit(bytes);
+		poison(free().subspan(0, popped));
+		if (current == 0 && (used_flags & DECOMMIT_ON_EMPTY) && !(used_flags & FULL_COMMIT)) {
 			commit = 0;
+			virtual_decommit(bytes);
 		}
 		return popped;
 	}
 
 	inline u64 pop_to(u64 scope) {
-		if (scope > bytes.size()) {
-			return next->pop_to(scope - bytes.size());
+		if (scope > current) {
+			assert(next);
+			return next->pop_to(scope - current);
 		} else {
-			return pop(current - scope);
+			auto popped = 0;
+			if (next && next->bytes.size() > 0) {
+				popped += next->scope();
+				next->vmem_release();
+			}
+			return popped + pop_local(current - scope);
 		}
 	}
 
 	inline Arena& reset() {
-		pop(current);
-		if (next) next->vmem_release();
+		pop_to((flags & ALLOW_CHAIN_GROWTH) ? sizeof(Arena) : 0);
 		return *this;
 	}
 
 	inline Buffer morph(Buffer buffer, u64 size, u64 align) {
 		if (buffer.size() == size) return buffer;//* untouched
-		if (buffer.end() == used().end()) {//* tip morph
-			pop(buffer.size(), FORCE_NONE);
-			auto new_buffer = push_bytes(size, align);
-			return new_buffer.data() ? new_buffer : push_bytes(buffer.size(), align);
-		} else if (size < buffer.size()) {//* shrink
+
+		bool growing = size > buffer.size();
+		bool shrinking = size < buffer.size();
+		u64 diff = growing ? size - buffer.size() : buffer.size() - size;
+
+		auto local_tip = buffer.end() == used().end();
+		auto chain_tip = !next || next->current == 0;
+		auto enough_space = (growing && (diff <= free().size())) || shrinking;
+
+		if (local_tip && (chain_tip || (flags & ALLOW_SCOPE_UNSTABLE)) && enough_space) {//* tip morph
+			if (growing) { //*grow tip
+				return Buffer(buffer.begin(), push_local(diff, 0).end());
+			} else { //* shrink tip
+				pop_local(diff);
+				return buffer.subspan(0, size);
+			}
+		} else if (shrinking) {//* shrink
 			return buffer.subspan(0, size);
 		} else if (flags & ALLOW_MOVE_MORPH) {//* move morph
 			auto new_buffer = push_bytes(size, align);
 			memcpy(new_buffer.data(), buffer.data(), min(buffer.size(), new_buffer.size()));
 			return new_buffer;
 		} else {//* failure
-			assert((fprintf(stderr, "Failed morph : initial=%llu, available=%llu, requested=%llu\n", buffer.size(), free().size(), size), flags & ALLOW_FAILURE));
+			assert((fprintf(stderr, "Failed memory morph : initial=%llu, available=%llu, requested=%llu\n", buffer.size(), free().size(), size), flags & ALLOW_FAILURE));
 			return buffer;
 		}
 	}

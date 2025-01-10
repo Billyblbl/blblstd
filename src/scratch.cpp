@@ -3,11 +3,14 @@
 
 #include <arena.cpp>
 
+#include <list.cpp>
+
 tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collisions = {});
 tuple<Arena&, u64> scratch_push_scope(u64 size, LiteralArray<const Arena*> collision);
 tuple<Arena&, u64> scratch_push_scope(u64 size, const Arena* const collision);
 Arena& scratch_pop_scope(Arena& arena, u64 scope);
 
+// #define BLBLSTD_IMPL
 #ifdef BLBLSTD_IMPL
 
 static List<Arena> &get_scratches() {
@@ -17,6 +20,9 @@ static List<Arena> &get_scratches() {
 	return scratches;
 }
 
+
+//* would be better to directly provide the tip, but would make collision check expensive
+//* would it be more expensive than the recusrive push it causes ? it should be if root scratch is too small
 tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collisions) {
 	auto& scratches = get_scratches();
 
@@ -27,6 +33,8 @@ tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collis
 
 	if (i < 0) {
 		scratch = &scratches.push(Arena::from_vmem(size, Arena::COMMIT_ON_PUSH | Arena::DECOMMIT_ON_EMPTY | Arena::ALLOW_CHAIN_GROWTH));
+		if (scratches.current > 5)
+			fprintf(stderr, "Warning %llu scratches, potential bug or incorrect usage\n", scratches.current);
 	} else {
 		if (scratches[i].current == 0 && scratches[i].bytes.size() < size)
 			scratches[i].vmem_resize(size);

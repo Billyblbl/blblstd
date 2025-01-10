@@ -29,6 +29,14 @@ template<typename T> Array<T> filter(Arena& arena, Array<T> collection, functor<
 	return list.shrink_to_content(arena);
 }
 
+template<typename T> i64 index_of(Array<T> collection, functor<bool(const T&)> auto predicate) {
+	for (auto i : i64xrange{ 0, collection.size() }) {
+		if (predicate(collection[i]))
+			return i;
+	}
+	return -1;
+}
+
 template<typename T> auto map(Arena& arena, Array<T> collection, auto mapper) {
 	using R = decltype(mapper(collection[0]));
 	auto list = List{ arena.push_array<R>(collection.size()), 0 };
