@@ -104,6 +104,20 @@ struct Arena {
 		return scope;
 	}
 
+	u64 tip(bool local_only = false) const {
+		if (local_only) return bytes.size();
+		u64 tip = current;
+		if (next && next->bytes.size() > 0) tip += next->tip();
+		else tip = bytes.size();
+		return tip;
+	}
+
+	Buffer free_tip() const {
+		const Arena* it;
+		for (it = this; it->next && it->next->bytes.size() > 0; it = it->next);
+		return it->free();
+	}
+
 	static constexpr u64 PAGE_SIZE_HEURISTIC = 4096;
 	static constexpr u64 COMMIT_CHUNK_SIZE = PAGE_SIZE_HEURISTIC * 4;
 
