@@ -21,11 +21,13 @@ static List<Arena> &get_scratches() {
 	return scratches;
 }
 
+constexpr auto SCRATCH_FLAGS = Arena::COMMIT_ON_PUSH | Arena::DECOMMIT_ON_EMPTY | Arena::ALLOW_CHAIN_GROWTH | Arena::ALLOW_MOVE_MORPH;
+
 Array<Arena> scratch_preallocate(u64 size, u64 channels) {
 	auto& scratches = get_scratches();
 	auto begin = scratches.current;
 	for (auto i = 0u; i < channels; i++)
-		scratches.push(Arena::from_vmem(size, Arena::COMMIT_ON_PUSH | Arena::DECOMMIT_ON_EMPTY | Arena::ALLOW_CHAIN_GROWTH));
+		scratches.push(Arena::from_vmem(size, SCRATCH_FLAGS));
 	return scratches.used().subspan(begin, channels);
 }
 
@@ -49,7 +51,7 @@ tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collis
 	size = round_up_bit(size + sizeof(Arena));
 
 	if (i < 0) {
-		scratch = &scratches.push(Arena::from_vmem(size, Arena::COMMIT_ON_PUSH | Arena::DECOMMIT_ON_EMPTY | Arena::ALLOW_CHAIN_GROWTH));
+		scratch = &scratches.push(Arena::from_vmem(size, SCRATCH_FLAGS));
 		if (scratches.current > 5)
 			fprintf(stderr, "Warning %llu scratches, potential bug or incorrect usage\n", scratches.current);
 	} else {
