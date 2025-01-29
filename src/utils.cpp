@@ -260,4 +260,6 @@ template<typename T> Array<T> copy(Array<T> source, Array<T> dest) {
 #define fail_ret(m, x) (fail_msg(m), x)
 #define expect(x) (x ? x : fail_ret(#x, x))
 
+template<typename T> struct Pair { T e[2]; };
+
 #endif
