@@ -55,6 +55,12 @@ template<typename T> struct List {
 		return push(element);
 	}
 
+	u32 push_idx(Arena& arena, const T& element) {
+		u32 index = current;
+		push_growing(arena, element);
+		return index;
+	}
+
 	auto push_growing(Arena& arena, Array<const T> elements) {
 		auto dest = push_growing(arena, elements.size());
 		for (auto i : u64xrange{ 0, elements.size() })
