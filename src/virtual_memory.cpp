@@ -25,12 +25,22 @@ Buffer virtual_remake(Buffer buffer, u64 size, u64 content, u64 commit) {
 #if defined(PLATFORM_WINDOWS)
 #include <windows.h>
 
+void log_error(DWORD error_code, string source = "") {
+	char message_buffer[1024];
+	DWORD flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+	DWORD LID = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
+
+	if (FormatMessageA(flags, NULL, error_code, LID, message_buffer, 1024, NULL)) {
+		fprintf(stderr, "%.*s : %s", i32(source.size()), source.data(), message_buffer);
+	} else {
+		fprintf(stderr, "%.*s : Failed to retrieve error message %lx", i32(source.size()), source.data(), error_code);
+	}
+}
+
 Buffer virtual_reserve(usize size, bool commit) {
 	auto ptr = VirtualAlloc(null, size, MEM_RESERVE | (commit ? MEM_COMMIT : 0), PAGE_READWRITE);
 	if (!ptr) {
-		auto err = GetLastError();
-		//TODO logs something with FormatMessage()
-		(void)err;
+		log_error(GetLastError(), __PRETTY_FUNCTION__);
 		panic();
 		return Buffer{};
 	}
@@ -41,9 +51,7 @@ Buffer virtual_commit(Buffer buffer) {
 	if (buffer.size() == 0) return buffer;
 	auto ptr = VirtualAlloc(buffer.data(), buffer.size(), MEM_COMMIT, PAGE_READWRITE);
 	if (!ptr) {
-		auto err = GetLastError();
-		//TODO logs something with FormatMessage()
-		(void)err;
+		log_error(GetLastError(), __PRETTY_FUNCTION__);
 		panic();
 		return Buffer{};
 	}
@@ -53,9 +61,7 @@ Buffer virtual_commit(Buffer buffer) {
 void virtual_decommit(Buffer buffer) {
 	auto success = VirtualFree(buffer.data(), buffer.size(), MEM_DECOMMIT);
 	if (!success) {
-		auto err = GetLastError();
-		//TODO logs something with FormatMessage()
-		(void)err;
+		log_error(GetLastError(), __PRETTY_FUNCTION__);
 		panic();
 	}
 }
@@ -63,9 +69,7 @@ void virtual_decommit(Buffer buffer) {
 void virtual_release(Buffer buffer) {
 	auto success = VirtualFree(buffer.data(), 0, MEM_RELEASE);
 	if (!success) {
-		auto err = GetLastError();
-		//TODO logs something with FormatMessage()
-		(void)err;
+		log_error(GetLastError(), __PRETTY_FUNCTION__);
 		panic();
 	}
 }

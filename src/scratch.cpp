@@ -6,13 +6,17 @@
 #include <list.cpp>
 Array<Arena> scratch_preallocate(u64 size, u64 channels = 1);
 void scratch_clear(bool root = true);
-tuple<Arena&, u64> scratch_push_scope(u64 size = {}, Array<const Arena* const> collisions = {});
+tuple<Arena&, u64> scratch_push_scope(u64 size = 0, Array<const Arena* const> collisions = {});
 tuple<Arena&, u64> scratch_push_scope(u64 size, LiteralArray<const Arena*> collision);
 tuple<Arena&, u64> scratch_push_scope(u64 size, const Arena* const collision);
 Arena& scratch_pop_scope(Arena& arena, u64 scope);
 
 // #define BLBLSTD_IMPL
 #ifdef BLBLSTD_IMPL
+
+#ifndef DEFAULT_SCRATCH_STARTER
+#define DEFAULT_SCRATCH_STARTER (1 << 24)
+#endif
 
 static List<Arena> &get_scratches() {
 	constexpr auto MAX_SCRATCHES = 16;
@@ -44,6 +48,7 @@ void scratch_clear(bool root) {
 //* would it be more expensive than the recusrive push it causes ? it should be if root scratch is too small
 tuple<Arena&, u64> scratch_push_scope(u64 size, Array<const Arena* const> collisions) {
 	auto& scratches = get_scratches();
+	if (size == 0) size = DEFAULT_SCRATCH_STARTER;
 
 	auto collide = [&](const Arena& s) { return linear_search(collisions, [&](const Arena* const c) { return c == &s; }) >= 0; };
 	auto i = linear_search(scratches.used(), [&](Arena& s) { return (s.current == 0 || s.free_tip().size() >= size) && !collide(s); });
