@@ -22,7 +22,7 @@ template<typename F, typename S> concept functor = functor_t<F, typename signatu
 
 //TODO concepts for function parameter requirements mapper, score, comp
 
-template<typename T> Array<T> filter(Arena& arena, Array<T> collection, functor<bool(const T&)> auto predicate) {
+template<typename T> Array<T> filter(Arena& arena, Array<const T> collection, functor<bool(const T&)> auto predicate) {
 	auto list = List{ arena.push_array<T>(collection.size()), 0 };
 	for (auto&& i : collection) if (predicate(i))
 		list.push(i);

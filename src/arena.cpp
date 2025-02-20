@@ -42,7 +42,7 @@ struct Arena {
 	template<typename T> static inline Arena from_array(Array<T> arr, u64 flags = 0) { return from_buffer(cast<byte>(arr), flags | FULL_COMMIT); }
 	template<typename T, usize S> static inline Arena from_array(const T(&arr)[S], u64 flags = 0) { return from_array(larray(arr), flags | FULL_COMMIT); }
 
-	static constexpr u64 DEFAULT_VMEM_FLAGS = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY | ALLOW_CHAIN_GROWTH;
+	static constexpr u64 DEFAULT_VMEM_FLAGS = COMMIT_ON_PUSH | DECOMMIT_ON_EMPTY | ALLOW_CHAIN_GROWTH | ALLOW_MOVE_MORPH;
 
 	static inline Arena from_vmem(u64 size, u64 flags = DEFAULT_VMEM_FLAGS) {
 		auto buffer = virtual_reserve(size, flags & FULL_COMMIT);
